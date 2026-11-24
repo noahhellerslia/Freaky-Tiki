@@ -1,0 +1,17 @@
+# Python / virtualenv
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Local runtime & downloaded tunnel binaries
+logs/
+tools/cloudflared
+tools/cloudflared-*
+tools/*.tgz
+tools/*.zip
+
+# OS / editor junk
+.DS_Store
+*.swp
+*.swo

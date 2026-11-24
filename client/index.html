@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Freaky Tiki</title>
+<meta name="theme-color" content="#150e1c">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/client/style.css?v=24">
+</head>
+<body>
+  <h1 id="title">
+    <img class="title-torch" src="/assets/lb_torch.gif" alt="">
+    <img src="/assets/tiki.png" alt="">
+    <span>Freaky Tiki</span>
+    <img src="/assets/tiki.png" alt="">
+    <img class="title-torch flip" src="/assets/lb_torch.gif" alt="">
+  </h1>
+  <p class="home-tagline">Night at the Tiki Lounge &bull; Fast-paced card chaos</p>
+
+  <section id="join-box" class="home-shell">
+    <div id="home-menu" class="home-menu">
+      <button id="home-multiplayer" type="button" class="home-pill home-mp">
+        <span class="btn-decor" aria-hidden="true">
+          <svg class="btn-corner decor-tl" viewBox="0 0 64 64" shape-rendering="crispEdges">
+            <g fill="#174d2c"><rect x="0" y="0" width="38" height="6"/><rect x="0" y="6" width="30" height="6"/><rect x="0" y="12" width="22" height="6"/><rect x="0" y="18" width="14" height="8"/><rect x="0" y="26" width="8" height="12"/></g>
+            <g fill="#237a42"><rect x="2" y="2" width="32" height="4"/><rect x="6" y="8" width="22" height="4"/><rect x="2" y="14" width="16" height="4"/><rect x="2" y="20" width="10" height="6"/><rect x="18" y="0" width="24" height="4"/><rect x="34" y="2" width="12" height="4"/><rect x="2" y="28" width="4" height="14"/></g>
+            <g fill="#3aa658"><rect x="6" y="2" width="20" height="2"/><rect x="10" y="8" width="14" height="2"/><rect x="4" y="14" width="10" height="2"/><rect x="24" y="2" width="16" height="2"/></g>
+            <g transform="translate(8,8)"><rect x="4" y="0" width="6" height="4" fill="#ff5a7a"/><rect x="0" y="4" width="4" height="6" fill="#ff5a7a"/><rect x="10" y="4" width="4" height="6" fill="#ff5a7a"/><rect x="4" y="10" width="6" height="4" fill="#ff5a7a"/><rect x="2" y="2" width="10" height="10" fill="#ff7c96"/><rect x="5" y="5" width="4" height="4" fill="#ffd84d"/><rect x="6" y="6" width="2" height="2" fill="#fff3b0"/></g>
+          </svg>
+          <svg class="btn-corner decor-tr" viewBox="0 0 64 64" shape-rendering="crispEdges">
+            <g fill="#174d2c"><rect x="0" y="0" width="38" height="6"/><rect x="0" y="6" width="30" height="6"/><rect x="0" y="12" width="22" height="6"/><rect x="0" y="18" width="14" height="8"/><rect x="0" y="26" width="8" height="12"/></g>
+            <g fill="#237a42"><rect x="2" y="2" width="32" height="4"/><rect x="6" y="8" width="22" height="4"/><rect x="2" y="14" width="16" height="4"/><rect x="2" y="20" width="10" height="6"/><rect x="18" y="0" width="24" height="4"/><rect x="34" y="2" width="12" height="4"/><rect x="2" y="28" width="4" height="14"/></g>
+            <g fill="#3aa658"><rect x="6" y="2" width="20" height="2"/><rect x="10" y="8" width="14" height="2"/><rect x="4" y="14" width="10" height="2"/><rect x="24" y="2" width="16" height="2"/></g>
+            <g transform="translate(8,8)"><rect x="4" y="0" width="6" height="4" fill="#ff9f43"/><rect x="0" y="4" width="4" height="6" fill="#ff9f43"/><rect x="10" y="4" width="4" height="6" fill="#ff9f43"/><rect x="4" y="10" width="6" height="4" fill="#ff9f43"/><rect x="2" y="2" width="10" height="10" fill="#ffc46b"/><rect x="5" y="5" width="4" height="4" fill="#ff5a7a"/><rect x="6" y="6" width="2" height="2" fill="#fff3b0"/></g>
+          </svg>
+          <svg class="btn-corner decor-bl" viewBox="0 0 64 64" shape-rendering="crispEdges">
+            <g fill="#174d2c"><rect x="0" y="0" width="38" height="6"/><rect x="0" y="6" width="30" height="6"/><rect x="0" y="12" width="22" height="6"/><rect x="0" y="18" width="14" height="8"/><rect x="0" y="26" width="8" height="12"/></g>
+            <g fill="#237a42"><rect x="2" y="2" width="32" height="4"/><rect x="6" y="8" width="22" height="4"/><rect x="2" y="14" width="16" height="4"/><rect x="2" y="20" width="10" height="6"/><rect x="18" y="0" width="24" height="4"/><rect x="34" y="2" width="12" height="4"/><rect x="2" y="28" width="4" height="14"/></g>
+            <g fill="#3aa658"><rect x="6" y="2" width="20" height="2"/><rect x="10" y="8" width="14" height="2"/><rect x="4" y="14" width="10" height="2"/><rect x="24" y="2" width="16" height="2"/></g>
+            <g transform="translate(8,8)"><rect x="4" y="0" width="6" height="4" fill="#ff5a7a"/><rect x="0" y="4" width="4" height="6" fill="#ff5a7a"/><rect x="10" y="4" width="4" height="6" fill="#ff5a7a"/><rect x="4" y="10" width="6" height="4" fill="#ff5a7a"/><rect x="2" y="2" width="10" height="10" fill="#ff7c96"/><rect x="5" y="5" width="4" height="4" fill="#ffd84d"/><rect x="6" y="6" width="2" height="2" fill="#fff3b0"/></g>
+          </svg>
+          <svg class="btn-corner decor-br" viewBox="0 0 64 64" shape-rendering="crispEdges">
+            <g fill="#174d2c"><rect x="0" y="0" width="38" height="6"/><rect x="0" y="6" width="30" height="6"/><rect x="0" y="12" width="22" height="6"/><rect x="0" y="18" width="14" height="8"/><rect x="0" y="26" width="8" height="12"/></g>
+            <g fill="#237a42"><rect x="2" y="2" width="32" height="4"/><rect x="6" y="8" width="22" height="4"/><rect x="2" y="14" width="16" height="4"/><rect x="2" y="20" width="10" height="6"/><rect x="18" y="0" width="24" height="4"/><rect x="34" y="2" width="12" height="4"/><rect x="2" y="28" width="4" height="14"/></g>
+            <g fill="#3aa658"><rect x="6" y="2" width="20" height="2"/><rect x="10" y="8" width="14" height="2"/><rect x="4" y="14" width="10" height="2"/><rect x="24" y="2" width="16" height="2"/></g>
+            <g transform="translate(8,8)"><rect x="4" y="0" width="6" height="4" fill="#ff9f43"/><rect x="0" y="4" width="4" height="6" fill="#ff9f43"/><rect x="10" y="4" width="4" height="6" fill="#ff9f43"/><rect x="4" y="10" width="6" height="4" fill="#ff9f43"/><rect x="2" y="2" width="10" height="10" fill="#ffc46b"/><rect x="5" y="5" width="4" height="4" fill="#ff5a7a"/><rect x="6" y="6" width="2" height="2" fill="#fff3b0"/></g>
+          </svg>
+        </span>
+        <span class="home-pill-label">Play</span>
+      </button>
+      <div class="home-subrow">
+        <button id="tutorial-btn" type="button" class="home-pill home-tut">
+          <span class="btn-decor" aria-hidden="true">
+            <svg class="btn-corner decor-tl" viewBox="0 0 64 64" shape-rendering="crispEdges">
+              <g fill="#8c5a0a"><rect x="0" y="0" width="38" height="6"/><rect x="0" y="6" width="30" height="6"/><rect x="0" y="12" width="22" height="6"/><rect x="0" y="18" width="14" height="8"/><rect x="0" y="26" width="8" height="12"/></g>
+              <g fill="#c98b16"><rect x="2" y="2" width="32" height="4"/><rect x="6" y="8" width="22" height="4"/><rect x="2" y="14" width="16" height="4"/><rect x="2" y="20" width="10" height="6"/><rect x="18" y="0" width="24" height="4"/><rect x="34" y="2" width="12" height="4"/><rect x="2" y="28" width="4" height="14"/></g>
+              <g fill="#ffcf4a"><rect x="6" y="2" width="20" height="2"/><rect x="10" y="8" width="14" height="2"/><rect x="4" y="14" width="10" height="2"/><rect x="24" y="2" width="16" height="2"/></g>
+              <g transform="translate(8,8)"><rect x="4" y="0" width="6" height="4" fill="#ffcf4a"/><rect x="0" y="4" width="4" height="6" fill="#ffcf4a"/><rect x="10" y="4" width="4" height="6" fill="#ffcf4a"/><rect x="4" y="10" width="6" height="4" fill="#ffcf4a"/><rect x="2" y="2" width="10" height="10" fill="#ffe680"/><rect x="5" y="5" width="4" height="4" fill="#fff8d6"/></g>
+            </svg>
+            <svg class="btn-corner decor-tr" viewBox="0 0 64 64" shape-rendering="crispEdges">
+              <g fill="#8c5a0a"><rect x="0" y="0" width="38" height="6"/><rect x="0" y="6" width="30" height="6"/><rect x="0" y="12" width="22" height="6"/><rect x="0" y="18" width="14" height="8"/><rect x="0" y="26" width="8" height="12"/></g>
+              <g fill="#c98b16"><rect x="2" y="2" width="32" height="4"/><rect x="6" y="8" width="22" height="4"/><rect x="2" y="14" width="16" height="4"/><rect x="2" y="20" width="10" height="6"/><rect x="18" y="0" width="24" height="4"/><rect x="34" y="2" width="12" height="4"/><rect x="2" y="28" width="4" height="14"/></g>
+              <g fill="#ffcf4a"><rect x="6" y="2" width="20" height="2"/><rect x="10" y="8" width="14" height="2"/><rect x="4" y="14" width="10" height="2"/><rect x="24" y="2" width="16" height="2"/></g>
+              <g transform="translate(8,8)"><rect x="4" y="0" width="6" height="4" fill="#ffcf4a"/><rect x="0" y="4" width="4" height="6" fill="#ffcf4a"/><rect x="10" y="4" width="4" height="6" fill="#ffcf4a"/><rect x="4" y="10" width="6" height="4" fill="#ffcf4a"/><rect x="2" y="2" width="10" height="10" fill="#ffe680"/><rect x="5" y="5" width="4" height="4" fill="#fff8d6"/></g>
+            </svg>
+            <svg class="btn-corner decor-bl" viewBox="0 0 64 64" shape-rendering="crispEdges">
+              <g fill="#8c5a0a"><rect x="0" y="0" width="38" height="6"/><rect x="0" y="6" width="30" height="6"/><rect x="0" y="12" width="22" height="6"/><rect x="0" y="18" width="14" height="8"/><rect x="0" y="26" width="8" height="12"/></g>
+              <g fill="#c98b16"><rect x="2" y="2" width="32" height="4"/><rect x="6" y="8" width="22" height="4"/><rect x="2" y="14" width="16" height="4"/><rect x="2" y="20" width="10" height="6"/><rect x="18" y="0" width="24" height="4"/><rect x="34" y="2" width="12" height="4"/><rect x="2" y="28" width="4" height="14"/></g>
+              <g fill="#ffcf4a"><rect x="6" y="2" width="20" height="2"/><rect x="10" y="8" width="14" height="2"/><rect x="4" y="14" width="10" height="2"/><rect x="24" y="2" width="16" height="2"/></g>
+              <g transform="translate(8,8)"><rect x="4" y="0" width="6" height="4" fill="#ffcf4a"/><rect x="0" y="4" width="4" height="6" fill="#ffcf4a"/><rect x="10" y="4" width="4" height="6" fill="#ffcf4a"/><rect x="4" y="10" width="6" height="4" fill="#ffcf4a"/><rect x="2" y="2" width="10" height="10" fill="#ffe680"/><rect x="5" y="5" width="4" height="4" fill="#fff8d6"/></g>
+            </svg>
+            <svg class="btn-corner decor-br" viewBox="0 0 64 64" shape-rendering="crispEdges">
+              <g fill="#8c5a0a"><rect x="0" y="0" width="38" height="6"/><rect x="0" y="6" width="30" height="6"/><rect x="0" y="12" width="22" height="6"/><rect x="0" y="18" width="14" height="8"/><rect x="0" y="26" width="8" height="12"/></g>
+              <g fill="#c98b16"><rect x="2" y="2" width="32" height="4"/><rect x="6" y="8" width="22" height="4"/><rect x="2" y="14" width="16" height="4"/><rect x="2" y="20" width="10" height="6"/><rect x="18" y="0" width="24" height="4"/><rect x="34" y="2" width="12" height="4"/><rect x="2" y="28" width="4" height="14"/></g>
+              <g fill="#ffcf4a"><rect x="6" y="2" width="20" height="2"/><rect x="10" y="8" width="14" height="2"/><rect x="4" y="14" width="10" height="2"/><rect x="24" y="2" width="16" height="2"/></g>
+              <g transform="translate(8,8)"><rect x="4" y="0" width="6" height="4" fill="#ffcf4a"/><rect x="0" y="4" width="4" height="6" fill="#ffcf4a"/><rect x="10" y="4" width="4" height="6" fill="#ffcf4a"/><rect x="4" y="10" width="6" height="4" fill="#ffcf4a"/><rect x="2" y="2" width="10" height="10" fill="#ffe680"/><rect x="5" y="5" width="4" height="4" fill="#fff8d6"/></g>
+            </svg>
+          </span>
+          <span class="home-pill-label">Tutorial</span>
+        </button>
+      </div>
+      <button id="rejoin-home" type="button" class="ghost home-rejoin" hidden></button>
+      <div class="home-foot">
+        <button id="how-to" type="button" class="ghost home-howto"><img class="btn-ico" src="/assets/ico_scroll.png" alt=""> How to play</button>
+      </div>
+    </div>
+
+    <div id="multiplayer-view" class="panel home-hut home-subpage" hidden>
+      <div class="subpage-head">
+        <button id="mp-back" type="button" class="ghost subpage-back">← Back</button>
+        <h2>Multiplayer</h2>
+      </div>
+      <label>Your name <input id="name" maxlength="20" autocomplete="off"></label>
+      <div class="subpage-actions mp-mode-btns">
+        <button id="mp-join-tab" type="button">Join room</button>
+        <button id="mp-create-tab" type="button">Create room</button>
+      </div>
+      <div id="mp-join-panel" class="mp-subpanel" hidden>
+        <div class="mp-rooms-head">
+          <span>Available public rooms</span>
+          <button id="refresh-rooms" type="button" class="ghost mp-refresh-btn">Refresh</button>
+        </div>
+        <div id="public-rooms-list" class="public-rooms-list"></div>
+        <label>Or type a room code <input id="room" maxlength="8" autocomplete="off" placeholder="ABCD"></label>
+        <button id="join" type="button">Join by code</button>
+      </div>
+      <div id="mp-create-panel" class="mp-subpanel" hidden>
+        <div class="mp-code-row">
+          <span>Room code</span>
+          <strong id="create-room-code" class="mp-code-badge">ABCD</strong>
+          <button id="regen-room-code" type="button" class="ghost mp-refresh-btn">New code</button>
+        </div>
+        <div class="mp-privacy-row">
+          <label class="mp-privacy-opt"><input type="radio" name="room-privacy" id="create-public" value="public" checked> Public (listed)</label>
+          <label class="mp-privacy-opt"><input type="radio" name="room-privacy" id="create-private" value="private"> Private (code only)</label>
+        </div>
+        <button id="create-room" type="button">Open room</button>
+      </div>
+      <p class="hint">Public rooms appear in the list; private rooms require the 4-letter code.</p>
+    </div>
+
+    <div id="practice-view" class="panel home-hut home-subpage" hidden>
+      <div class="subpage-head">
+        <button id="practice-back" type="button" class="ghost subpage-back">← Back</button>
+        <h2>Practice vs Bots</h2>
+      </div>
+      <label>Your name <input id="practice-name" maxlength="20" autocomplete="off" placeholder="You"></label>
+      <div class="solo-opts">
+        <label>Bots:
+          <select id="bot-count">
+            <option value="1">1 bot</option>
+            <option value="3" selected>3 bots</option>
+            <option value="5">5 bots</option>
+            <option value="7">7 bots</option>
+          </select>
+        </label>
+        <label>Difficulty:
+          <button id="bot-difficulty" type="button" class="ghost diff-cycle-btn" data-diff="easy">Easy (relaxed)</button>
+        </label>
+      </div>
+      <label class="solo-opt-check" hidden><input type="checkbox" id="solo-dblclick"> Allow double-click / double-press to play</label>
+      <button id="solo" type="button">Start practice game</button>
+      <p class="hint">Starts a private game against bots with these settings - no room code needed.</p>
+    </div>
+
+    <p id="join-error" class="error" role="alert"></p>
+  </section>
+
+  <!-- Once you are in a room there is only the table: every bit of info and
+       every action lives ON the felt. -->
+  <section id="game-box" hidden>
+    <div id="arena">
+      <div class="table-decor" aria-hidden="true">
+        <!-- Top-left Hawaiian corner: palm fronds + coral hibiscus -->
+        <svg class="decor-corner decor-tl" viewBox="0 0 64 64" shape-rendering="crispEdges">
+          <g fill="#174d2c">
+            <rect x="0" y="0" width="38" height="6"/><rect x="0" y="6" width="30" height="6"/>
+            <rect x="0" y="12" width="22" height="6"/><rect x="0" y="18" width="14" height="8"/>
+            <rect x="0" y="26" width="8" height="12"/>
+          </g>
+          <g fill="#237a42">
+            <rect x="2" y="2" width="32" height="4"/><rect x="6" y="8" width="22" height="4"/>
+            <rect x="2" y="14" width="16" height="4"/><rect x="2" y="20" width="10" height="6"/>
+            <rect x="18" y="0" width="24" height="4"/><rect x="34" y="2" width="12" height="4"/>
+            <rect x="2" y="28" width="4" height="14"/>
+          </g>
+          <g fill="#3aa658">
+            <rect x="6" y="2" width="20" height="2"/><rect x="10" y="8" width="14" height="2"/>
+            <rect x="4" y="14" width="10" height="2"/><rect x="24" y="2" width="16" height="2"/>
+          </g>
+          <!-- Coral Hibiscus -->
+          <g transform="translate(8,8)">
+            <rect x="4" y="0" width="6" height="4" fill="#ff5a7a"/>
+            <rect x="0" y="4" width="4" height="6" fill="#ff5a7a"/>
+            <rect x="10" y="4" width="4" height="6" fill="#ff5a7a"/>
+            <rect x="4" y="10" width="6" height="4" fill="#ff5a7a"/>
+            <rect x="2" y="2" width="10" height="10" fill="#ff7c96"/>
+            <rect x="5" y="5" width="4" height="4" fill="#ffd84d"/>
+            <rect x="6" y="6" width="2" height="2" fill="#fff3b0"/>
+          </g>
+          <!-- Small golden plumeria -->
+          <g transform="translate(26,4)">
+            <rect x="2" y="0" width="4" height="2" fill="#fff6cc"/>
+            <rect x="0" y="2" width="8" height="4" fill="#fff6cc"/>
+            <rect x="2" y="6" width="4" height="2" fill="#fff6cc"/>
+            <rect x="3" y="3" width="2" height="2" fill="#ffcf4a"/>
+          </g>
+        </svg>
+
+        <!-- Top-right Hawaiian corner (mirrored) -->
+        <svg class="decor-corner decor-tr" viewBox="0 0 64 64" shape-rendering="crispEdges">
+          <g fill="#174d2c">
+            <rect x="0" y="0" width="38" height="6"/><rect x="0" y="6" width="30" height="6"/>
+            <rect x="0" y="12" width="22" height="6"/><rect x="0" y="18" width="14" height="8"/>
+            <rect x="0" y="26" width="8" height="12"/>
+          </g>
+          <g fill="#237a42">
+            <rect x="2" y="2" width="32" height="4"/><rect x="6" y="8" width="22" height="4"/>
+            <rect x="2" y="14" width="16" height="4"/><rect x="2" y="20" width="10" height="6"/>
+            <rect x="18" y="0" width="24" height="4"/><rect x="34" y="2" width="12" height="4"/>
+            <rect x="2" y="28" width="4" height="14"/>
+          </g>
+          <g fill="#3aa658">
+            <rect x="6" y="2" width="20" height="2"/><rect x="10" y="8" width="14" height="2"/>
+            <rect x="4" y="14" width="10" height="2"/><rect x="24" y="2" width="16" height="2"/>
+          </g>
+          <g transform="translate(8,8)">
+            <rect x="4" y="0" width="6" height="4" fill="#ff9f43"/>
+            <rect x="0" y="4" width="4" height="6" fill="#ff9f43"/>
+            <rect x="10" y="4" width="4" height="6" fill="#ff9f43"/>
+            <rect x="4" y="10" width="6" height="4" fill="#ff9f43"/>
+            <rect x="2" y="2" width="10" height="10" fill="#ffc46b"/>
+            <rect x="5" y="5" width="4" height="4" fill="#ff5a7a"/>
+            <rect x="6" y="6" width="2" height="2" fill="#fff3b0"/>
+          </g>
+          <g transform="translate(26,4)">
+            <rect x="2" y="0" width="4" height="2" fill="#fff6cc"/>
+            <rect x="0" y="2" width="8" height="4" fill="#fff6cc"/>
+            <rect x="2" y="6" width="4" height="2" fill="#fff6cc"/>
+            <rect x="3" y="3" width="2" height="2" fill="#ffcf4a"/>
+          </g>
+        </svg>
+
+        <!-- Bottom-left Hawaiian corner -->
+        <svg class="decor-corner decor-bl" viewBox="0 0 64 64" shape-rendering="crispEdges">
+          <g fill="#174d2c">
+            <rect x="0" y="0" width="38" height="6"/><rect x="0" y="6" width="30" height="6"/>
+            <rect x="0" y="12" width="22" height="6"/><rect x="0" y="18" width="14" height="8"/>
+            <rect x="0" y="26" width="8" height="12"/>
+          </g>
+          <g fill="#237a42">
+            <rect x="2" y="2" width="32" height="4"/><rect x="6" y="8" width="22" height="4"/>
+            <rect x="2" y="14" width="16" height="4"/><rect x="2" y="20" width="10" height="6"/>
+            <rect x="18" y="0" width="24" height="4"/><rect x="34" y="2" width="12" height="4"/>
+            <rect x="2" y="28" width="4" height="14"/>
+          </g>
+          <g fill="#3aa658">
+            <rect x="6" y="2" width="20" height="2"/><rect x="10" y="8" width="14" height="2"/>
+            <rect x="4" y="14" width="10" height="2"/><rect x="24" y="2" width="16" height="2"/>
+          </g>
+          <g transform="translate(8,8)">
+            <rect x="4" y="0" width="6" height="4" fill="#ff5a7a"/>
+            <rect x="0" y="4" width="4" height="6" fill="#ff5a7a"/>
+            <rect x="10" y="4" width="4" height="6" fill="#ff5a7a"/>
+            <rect x="4" y="10" width="6" height="4" fill="#ff5a7a"/>
+            <rect x="2" y="2" width="10" height="10" fill="#ff7c96"/>
+            <rect x="5" y="5" width="4" height="4" fill="#ffd84d"/>
+            <rect x="6" y="6" width="2" height="2" fill="#fff3b0"/>
+          </g>
+          <g transform="translate(4,26)">
+            <rect x="2" y="0" width="4" height="2" fill="#fff6cc"/>
+            <rect x="0" y="2" width="8" height="4" fill="#fff6cc"/>
+            <rect x="2" y="6" width="4" height="2" fill="#fff6cc"/>
+            <rect x="3" y="3" width="2" height="2" fill="#ffcf4a"/>
+          </g>
+        </svg>
+
+        <!-- Bottom-right Hawaiian corner -->
+        <svg class="decor-corner decor-br" viewBox="0 0 64 64" shape-rendering="crispEdges">
+          <g fill="#174d2c">
+            <rect x="0" y="0" width="38" height="6"/><rect x="0" y="6" width="30" height="6"/>
+            <rect x="0" y="12" width="22" height="6"/><rect x="0" y="18" width="14" height="8"/>
+            <rect x="0" y="26" width="8" height="12"/>
+          </g>
+          <g fill="#237a42">
+            <rect x="2" y="2" width="32" height="4"/><rect x="6" y="8" width="22" height="4"/>
+            <rect x="2" y="14" width="16" height="4"/><rect x="2" y="20" width="10" height="6"/>
+            <rect x="18" y="0" width="24" height="4"/><rect x="34" y="2" width="12" height="4"/>
+            <rect x="2" y="28" width="4" height="14"/>
+          </g>
+          <g fill="#3aa658">
+            <rect x="6" y="2" width="20" height="2"/><rect x="10" y="8" width="14" height="2"/>
+            <rect x="4" y="14" width="10" height="2"/><rect x="24" y="2" width="16" height="2"/>
+          </g>
+          <g transform="translate(8,8)">
+            <rect x="4" y="0" width="6" height="4" fill="#ff9f43"/>
+            <rect x="0" y="4" width="4" height="6" fill="#ff9f43"/>
+            <rect x="10" y="4" width="4" height="6" fill="#ff9f43"/>
+            <rect x="4" y="10" width="6" height="4" fill="#ff9f43"/>
+            <rect x="2" y="2" width="10" height="10" fill="#ffc46b"/>
+            <rect x="5" y="5" width="4" height="4" fill="#ff5a7a"/>
+            <rect x="6" y="6" width="2" height="2" fill="#fff3b0"/>
+          </g>
+          <g transform="translate(4,26)">
+            <rect x="2" y="0" width="4" height="2" fill="#fff6cc"/>
+            <rect x="0" y="2" width="8" height="4" fill="#fff6cc"/>
+            <rect x="2" y="6" width="4" height="2" fill="#fff6cc"/>
+            <rect x="3" y="3" width="2" height="2" fill="#ffcf4a"/>
+          </g>
+        </svg>
+      </div>
+      <div id="ring">
+        <div id="table-center"></div>
+        <div id="tiki-box" hidden>
+          <img id="tiki" src="/assets/tiki.png" alt="Freaky Tiki!">
+          <div id="tiki-pips"><i></i><i></i><i></i></div>
+          <div id="tiki-label"></div>
+          <span class="key-hint key-num inline" id="tiki-key">F</span>
+        </div>
+        <div id="stack-msg" class="stack-msg" hidden></div>
+      </div>
+      <div id="miss-vignette" hidden></div>
+      <div id="var-replay" hidden aria-live="polite">
+        <div class="var-head">
+          <span class="var-rec"><i class="var-dot"></i>REC</span>
+          <span class="var-title">TIKI VAR REVIEW</span>
+          <span class="var-slow">SLOW-MO</span>
+          <button id="var-close" type="button" title="Dismiss replay" aria-label="Dismiss replay">&times;</button>
+        </div>
+        <div class="var-stage">
+          <div class="var-crt" aria-hidden="true"></div>
+          <div class="var-actor">
+            <img id="var-tiki" src="/assets/tiki_0.png" alt="">
+            <span id="var-player"></span>
+          </div>
+          <div class="var-clash">
+            <div id="var-mover" class="var-mover">
+              <span id="var-card-rank" class="var-rank-badge attempted">?</span>
+              <div class="var-hand-card">
+                <img id="var-card" src="/assets/cards/card_back.png?v=2" alt="">
+                <img id="var-hand" class="var-hand-sprite" src="/assets/hand_0.png" alt="">
+              </div>
+              <span class="var-slot-lbl">Attempted</span>
+            </div>
+            <div class="var-target-pile">
+              <span id="var-target-rank" class="var-rank-badge middle">?</span>
+              <div class="var-mid-stack">
+                <img class="var-mid-peek p2" src="/assets/cards/blank_front.png?v=2" alt="">
+                <img class="var-mid-peek p1" src="/assets/cards/blank_front.png?v=2" alt="">
+                <img id="var-target" src="/assets/cards/card_back.png?v=2" alt="">
+              </div>
+              <span class="var-slot-lbl">Middle Stack</span>
+            </div>
+          </div>
+          <div id="var-stamp" class="var-stamp">NO STACK! (&plusmn;1)</div>
+        </div>
+        <div id="var-detail" class="var-detail"></div>
+      </div>
+
+      <div id="lobby-layer" hidden>
+        <div id="lobby-tikis"></div>
+        <div id="lobby-actions">
+          <div id="lobby-room-code-wrap" class="lobby-room-code-wrap">
+            <span class="lobby-room-code-lbl">Room Code</span>
+            <span id="lobby-room-code" class="lobby-room-code">----</span>
+          </div>
+          <div id="lobby-waiting-banner" class="lobby-waiting-banner" hidden></div>
+          <div id="lobby-waiting-room" class="waiting-room-panel" hidden></div>
+          <div id="lobby-color-picker" class="lobby-color-picker" hidden></div>
+          <div class="lobby-line">Practice rooms: the real table, the real rules</div>
+          <div class="station-btns">
+            <button data-station="turns" class="ghost">Taking turns</button>
+            <button data-station="stack" class="ghost">Stacking</button>
+            <button data-station="freaky" class="ghost">Freaky Tiki</button>
+            <button data-station="slap" class="ghost">Joker slap</button>
+          </div>
+          <div id="lobby-rules" class="lobby-rules" hidden>
+            <label id="lobby-dblclick-wrap" class="lobby-opt" hidden><input type="checkbox" id="lobby-dblclick"> Allow double-click / double-press to play</label>
+            <span id="lobby-dblclick-status" class="lobby-rule-pill" hidden></span>
+          </div>
+          <div id="lobby-bots" class="lobby-bots" hidden>
+            <div id="lobby-bots-host" class="lobby-bots-host" hidden>
+              <button id="lobby-add-bot" type="button" class="ghost lobby-bot-btn">+ Add bot</button>
+              <button id="lobby-remove-bot" type="button" class="ghost lobby-bot-btn">- Remove bot</button>
+              <button id="lobby-bot-diff" type="button" class="ghost lobby-bot-btn diff-cycle-btn" data-diff="easy">Bot level: Easy</button>
+            </div>
+            <span id="lobby-bots-status" class="lobby-rule-pill" hidden></span>
+          </div>
+          <div id="lobby-start-row" class="lobby-start-row">
+            <button id="start" hidden>Start game</button>
+            <button id="lobby-leave" type="button" class="btn-danger" hidden>Leave</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="hud-top">
+        <div id="status"></div>
+        <div id="action-info"></div>
+        <button id="fast-bots-btn" type="button" class="fast-bots-btn" hidden>Speed up bots</button>
+      </div>
+
+
+      <div id="coach" hidden>
+        <div class="coach-head">
+          <div class="coach-head-left">
+            <img class="coach-tiki" src="/assets/tiki.png" alt="">
+            <span class="coach-badge">Practice room</span>
+            <span id="coach-step-pill" class="coach-step-pill" hidden></span>
+          </div>
+          <div class="coach-head-actions">
+            <button id="coach-diff" type="button" class="ghost diff-cycle-btn coach-top-btn" data-diff="medium" hidden>Difficulty: Medium</button>
+            <button id="coach-exit" type="button" class="coach-top-btn btn-danger">Lobby</button>
+            <button id="coach-fold" class="coach-fold" title="Show or hide the instructions" aria-label="Show or hide the instructions">▾</button>
+          </div>
+        </div>
+        <div id="coach-progress" class="coach-progress" hidden><div id="coach-progress-bar" class="coach-progress-bar"></div></div>
+        <div id="coach-title"></div>
+        <p id="coach-text"></p>
+        <div id="coach-goal" class="coach-goal" hidden></div>
+        <p id="coach-result" role="status"></p>
+        <div class="coach-nav">
+          <button data-coach-station="turns" class="ghost">Turns</button>
+          <button data-coach-station="stack" class="ghost">Stacking</button>
+          <button data-coach-station="freaky" class="ghost">Freaky</button>
+          <button data-coach-station="slap" class="ghost">Slap</button>
+          <button id="coach-back" class="ghost" hidden>← Back</button>
+          <button id="coach-next" class="ghost" hidden>Next →</button>
+          <button id="coach-restart" class="ghost">Restart</button>
+          <button id="coach-real" hidden>Start real game</button>
+        </div>
+      </div>
+
+      <div id="tut-intro-box" class="tut-intro-box panel" hidden></div>
+      <div id="tut-goal-box" class="tut-goal-box" hidden></div>
+
+      <div id="error" role="alert"></div>
+      <div id="disconnect-bar" hidden>
+        <span id="disconnect-msg">Disconnected.</span>
+        <button id="rejoin-btn" type="button">Rejoin</button>
+        <button id="disconnect-home" type="button" class="ghost">Home</button>
+      </div>
+      <div id="joker-timer" class="joker-timer" hidden aria-live="polite"></div>
+      <div id="key-debug" class="key-debug" hidden aria-hidden="true"></div>
+      <div id="chat-box" class="chat-box" hidden>
+        <button id="chat-toggle" type="button" class="ghost chat-toggle" aria-expanded="false">Chat <span id="chat-unread" class="chat-unread" hidden>0</span></button>
+        <div id="chat-panel" class="panel chat-panel" hidden>
+          <div class="chat-head">
+            <span>Room Chat</span>
+            <button id="chat-close" type="button" class="ghost chat-close" aria-label="Minimize chat">&times;</button>
+          </div>
+          <div id="chat-log" class="chat-log" aria-live="polite"></div>
+          <form id="chat-form" class="chat-form" autocomplete="off">
+            <input id="chat-input" type="text" maxlength="200" placeholder="Say something...">
+            <button id="chat-send" type="submit" class="chat-send">Send</button>
+          </form>
+        </div>
+      </div>
+      <div id="big-overlay" hidden><img id="big-tiki" src="/assets/tiki.png" alt=""><div id="big-word"></div></div>
+
+
+
+      <div id="leaderboard" hidden>
+        <div class="tut-card panel leaderboard-card">
+          <h2 class="lb-heading"><img class="lb-torch" src="/assets/lb_torch.gif" alt=""><img class="lb-title-tiki" src="/assets/tiki.png" alt="">Tiki Standings<img class="lb-title-tiki flip" src="/assets/tiki.png" alt=""><img class="lb-torch flip" src="/assets/lb_torch.gif" alt=""></h2>
+          <div class="lb-stage">
+            <div id="lb-podium" class="lb-podium"></div>
+            <div id="lb-losers"></div>
+          </div>
+          <ol id="lb-list"></ol>
+          <div id="lb-waiting-room" class="waiting-room-panel lb-waiting-panel" hidden></div>
+          <div id="lb-bots" class="lobby-bots lb-bots" hidden>
+            <div id="lb-bots-host" class="lobby-bots-host" hidden>
+              <button id="lb-add-bot" type="button" class="ghost lobby-bot-btn">+ Add bot</button>
+              <button id="lb-remove-bot" type="button" class="ghost lobby-bot-btn">- Remove bot</button>
+              <button id="lb-bot-diff" type="button" class="ghost lobby-bot-btn diff-cycle-btn" data-diff="easy">Bot level: Easy</button>
+            </div>
+            <span id="lb-bots-status" class="lobby-rule-pill" hidden></span>
+          </div>
+          <div class="tut-nav">
+            <button id="lb-close" class="ghost">Look at the board</button>
+            <span id="lb-wait"></span>
+            <button id="lb-again" hidden><img class="btn-ico" src="/assets/lb_torch.gif" alt=""> Play again — same players</button>
+            <button id="lb-leave" class="ghost">Home</button>
+          </div>
+        </div>
+        <div id="board-peek" hidden>
+          <div class="tut-card panel board-peek-card">
+            <div class="board-peek-head">
+              <h2>Final Board</h2>
+              <button id="board-peek-close" class="board-peek-x" type="button" title="Close board view" aria-label="Close board view">&times;</button>
+            </div>
+            <div id="board-peek-stage"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="hud-btns">
+    <button id="sfx-btn" class="icon-btn mobile-audio-btn" title="Sound effects" aria-label="Sound effects"><img class="hud-ico" src="/assets/ico_sound.png" alt=""></button>
+    <button id="music-btn" class="icon-btn mobile-audio-btn" title="Music" aria-label="Music"><img class="hud-ico" src="/assets/ico_music.png" alt=""></button>
+    <button id="settings-btn" class="icon-btn" title="Settings" aria-label="Settings"><img class="hud-ico" src="/assets/ico_gear.png" alt=""></button>
+    <button id="fs-btn" class="icon-btn" title="Full screen" aria-label="Full screen"><img class="hud-ico" src="/assets/ico_expand.png" alt=""></button>
+  </div>
+
+  <div id="settings" hidden>
+    <div class="tut-card panel">
+      <h2>Settings</h2>
+      <label class="opt"><input type="checkbox" id="opt-keys"> Show keybind hints on the table</label>
+      <label class="opt"><input type="checkbox" id="opt-hand-cursor"> Use my color circle as cursor</label>
+      <label class="opt"><input type="checkbox" id="opt-vibrate"> Phone vibration</label>
+      <label class="opt"><input type="checkbox" id="opt-sfx"> Sound effects (<kbd>N</kbd>)</label>
+      <div class="vol-row">
+        <span class="vol-lbl">Sound volume</span>
+        <input type="range" id="vol-sfx" class="vol-slider" min="0" max="100" step="1" aria-label="Sound effects volume">
+        <span id="vol-sfx-val" class="vol-val">55%</span>
+      </div>
+      <label class="opt"><input type="checkbox" id="opt-music"> Music (<kbd>M</kbd>)</label>
+      <div class="vol-row">
+        <span class="vol-lbl">Music volume</span>
+        <input type="range" id="vol-music" class="vol-slider" min="0" max="100" step="1" aria-label="Music volume">
+        <span id="vol-music-val" class="vol-val">32%</span>
+      </div>
+      <h3>Keys</h3>
+      <ul class="keys-list">
+        <li><b>Hold 1-8</b> lift the stacking card with that number. Let go and it goes back.</li>
+        <li><b>Hold P</b> lift the top card of your playing pile (or press <b>P</b> to start a game). Let go and it goes back.</li>
+        <li><b>SPACE</b> drop the lifted card on the middle. During a Joker, mash it to slap.</li>
+        <li><b>S</b> shed a card during someone else's Freaky Tiki.</li>
+        <li><b>F</b> press 3 times to call your own Freaky Tiki (or click the tiki 3 times).</li>
+        <li><b>N</b> toggle sound effects on or off.</li>
+        <li><b>M</b> toggle background music on or off.</li>
+      </ul>
+      <div class="tut-nav">
+        <button id="set-how" class="ghost">How to play</button>
+        <button id="set-fs" class="ghost">Full screen</button>
+        <button id="leave" class="btn-danger">Leave room</button>
+        <button id="set-close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- How to play: shown over the join screen before you sit down, and
+       moved onto the table once you are in a room. -->
+  <div id="tutorial" hidden>
+    <div class="tut-card panel">
+      <div class="tut-head">
+        <h2 id="tut-title"></h2>
+        <span id="tut-step-pill" class="tut-step-pill"></span>
+      </div>
+      <div id="tut-body"></div>
+      <div id="tut-dots"></div>
+      <div class="tut-nav">
+        <button id="tut-back" class="ghost">← Back</button>
+        <button id="tut-next">Next →</button>
+        <button id="tut-done" hidden><img class="btn-ico" src="/assets/tiki.png" alt=""> Start playing</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="hand-cursor" class="color-cursor" hidden></div>
+<script src="/client/app.js?v=33"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+# Render Blueprint - if this repo is on GitHub, Render can read this file and
+# configure the service for you (New > Blueprint). Equivalent manual settings
+# are in docs/DEPLOY.md. One instance only: rooms live in its memory.
+services:
+  - type: web
+    name: freaky-tiki
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: cd server && uvicorn server:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    numInstances: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.4"
