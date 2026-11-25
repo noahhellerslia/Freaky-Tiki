@@ -602,7 +602,12 @@ class GameState:
 
     def _valid_joker_targets(self) -> list[str]:
         active = self.active_players()
-        if self.last_joker_target is not None and self.joker_target_streak >= 2:
+        if (
+            self.last_joker_target is not None
+            and self.joker_target_streak >= 2
+            and self.joker_placer == self.last_joker_target
+            and len(self.middle) == 1
+        ):
             others = [p for p in active if p != self.last_joker_target]
             if others:
                 return others
@@ -641,11 +646,15 @@ class GameState:
             raise ValueError("that player is out of the game and cannot be given cards")
         if target not in self._valid_joker_targets():
             raise ValueError(f"{target} cannot receive the Joker stack 3 times in a row")
-        if target == self.last_joker_target:
-            self.joker_target_streak += 1
+        if target == self.joker_placer and len(self.middle) == 1:
+            if target == self.last_joker_target:
+                self.joker_target_streak += 1
+            else:
+                self.last_joker_target = target
+                self.joker_target_streak = 1
         else:
-            self.last_joker_target = target
-            self.joker_target_streak = 1
+            self.last_joker_target = None
+            self.joker_target_streak = 0
         self.joker_placer, self.presses, self.slap_winner, self.last_slapper = None, {}, None, None
         self.joker_from_stacking = False
         self.joker_deadline = None

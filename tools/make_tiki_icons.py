@@ -229,6 +229,53 @@ def make_stopwatch():
     return img
 
 
+def make_stopwatch_anim():
+    import math
+    frames = 12
+    sheet = Image.new("RGBA", (16 * frames, 16), (0, 0, 0, 0))
+    cx, cy = 7.5, 8.5
+    for f in range(frames):
+        img, d = canvas()
+        # Stopwatch body & crown (matches make_stopwatch)
+        d.rectangle([6, 1, 9, 2], fill=GOLD_HI, outline=INK)
+        d.rectangle([7, 2, 8, 3], fill=GOLD_D)
+        d.point([(12, 4), (13, 3)], fill=GOLD)
+        d.ellipse([2, 3, 13, 14], fill=GOLD, outline=INK)
+        d.ellipse([4, 5, 11, 12], fill=CREAM, outline=INK)
+        d.point([(5, 6)], fill=GOLD_HI)
+
+        # Remaining fraction (1.0 -> 0.0)
+        frac = 1.0 - (f / float(frames - 1))
+        sweep_rad = frac * 2.0 * math.pi
+        px = img.load()
+        for y in range(6, 12):
+            for x in range(5, 11):
+                if px[x, y][:3] == CREAM[:3]:
+                    dx, dy = x - cx, y - cy
+                    # Clockwise angle from 12 o'clock (0 .. 2*pi)
+                    ang = (math.atan2(dx, -dy)) % (2.0 * math.pi)
+                    if frac > 0.0 and ang <= sweep_rad + 1e-6:
+                        # Semi-transparent torch-orange pixel overlay blended onto cream dial
+                        r0, g0, b0, a0 = px[x, y]
+                        or_, og, ob, oa = 255, 138, 61, 150
+                        alpha = oa / 255.0
+                        px[x, y] = (
+                            int(r0 * (1 - alpha) + or_ * alpha),
+                            int(g0 * (1 - alpha) + og * alpha),
+                            int(b0 * (1 - alpha) + ob * alpha),
+                            255,
+                        )
+        # Pixel clock hand at the sweep edge
+        hand_ang = sweep_rad
+        for r in (0, 1, 2, 3):
+            hx = int(round(cx + math.sin(hand_ang) * r))
+            hy = int(round(cy - math.cos(hand_ang) * r))
+            if 5 <= hx <= 10 and 6 <= hy <= 11:
+                px[hx, hy] = HIBISCUS if r >= 2 else INK
+        sheet.paste(img, (f * 16, 0))
+    return sheet
+
+
 def main():
     out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets")
     os.makedirs(out_dir, exist_ok=True)
@@ -242,10 +289,11 @@ def main():
     save_icon(make_music(), out_dir, "ico_music.png")
     save_icon(make_disconnected(), out_dir, "ico_disconnected.png")
     save_icon(make_stopwatch(), out_dir, "ico_stopwatch.png")
+    save_icon(make_stopwatch_anim(), out_dir, "stopwatch_anim.png")
     save_icon(make_medal(GOLD_HI, GOLD, GOLD_D), out_dir, "ico_medal_1.png")
     save_icon(make_medal(SILVER_HI, SILVER, SILVER_D), out_dir, "ico_medal_2.png")
     save_icon(make_medal(BRONZE_HI, BRONZE, BRONZE_D), out_dir, "ico_medal_3.png")
-    print("Generated 13 pixel-art Tiki icons in assets/")
+    print("Generated pixel-art Tiki icons + stopwatch_anim.png in assets/")
 
 
 if __name__ == "__main__":

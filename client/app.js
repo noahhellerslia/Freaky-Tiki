@@ -5015,7 +5015,12 @@ class PGame {
   }
   validJokerTargets() {
     const active = this.players.filter((p) => !this.finished.includes(p));
-    if (this.lastJokerTarget !== null && this.jokerTargetStreak >= 2) {
+    if (
+      this.lastJokerTarget !== null &&
+      this.jokerTargetStreak >= 2 &&
+      this.jokerPlacer === this.lastJokerTarget &&
+      this.middle.length === 1
+    ) {
       const others = active.filter((p) => p !== this.lastJokerTarget);
       if (others.length) return others;
     }
@@ -5218,8 +5223,13 @@ class PGame {
     if (this.phase !== "joker_choose" || player !== this.slapWinner) throw new Error("only the slap winner chooses who gets the stack");
     if (!this.players.includes(move.target) || this.finished.includes(move.target)) throw new Error("that player is out of the game and cannot be given cards");
     if (!this.validJokerTargets().includes(move.target)) throw new Error(`${move.target} cannot receive the Joker stack 3 times in a row`);
-    if (move.target === this.lastJokerTarget) this.jokerTargetStreak += 1;
-    else { this.lastJokerTarget = move.target; this.jokerTargetStreak = 1; }
+    if (move.target === this.jokerPlacer && this.middle.length === 1) {
+      if (move.target === this.lastJokerTarget) this.jokerTargetStreak += 1;
+      else { this.lastJokerTarget = move.target; this.jokerTargetStreak = 1; }
+    } else {
+      this.lastJokerTarget = null;
+      this.jokerTargetStreak = 0;
+    }
     this.jokerPlacer = null; this.presses = {}; this.slapWinner = null; this.lastSlapper = null; this.jokerFromStacking = false; this.jokerDeadline = null;
     this.pickupMiddle(move.target, now);
   }
