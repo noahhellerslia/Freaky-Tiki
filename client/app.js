@@ -86,19 +86,35 @@ function otherGrabs(view) {
 }
 
 let currentPlayerColors = {};
+let preferredColor = 0;
+try {
+  const savedCol = localStorage.getItem("ft_pref_color");
+  if (savedCol !== null && !Number.isNaN(Number(savedCol))) {
+    preferredColor = ((Number(savedCol) % 8) + 8) % 8;
+  }
+} catch (e) { /* private mode */ }
 function playerIndex(player, playersList) {
   if (player && Object.prototype.hasOwnProperty.call(currentPlayerColors, player)) {
     const c = Number(currentPlayerColors[player]);
     if (!Number.isNaN(c)) return ((c % 8) + 8) % 8;
   }
-  const i = (playersList || []).indexOf(player);
-  return ((i < 0 ? 0 : i) % 8 + 8) % 8;
+  if (player && player === myName) return preferredColor;
+  const list = playersList || [];
+  const i = list.indexOf(player);
+  if (i < 0) return 0;
+  if (myName && list.includes(myName)) {
+    const others = list.filter((p) => p !== myName);
+    const oIdx = others.indexOf(player);
+    const avail = [0, 1, 2, 3, 4, 5, 6, 7].filter((c) => c !== preferredColor);
+    if (oIdx >= 0 && oIdx < avail.length) return avail[oIdx];
+  }
+  return ((i % 8) + 8) % 8;
 }
 function handSrc(player, playersList) {
   // The grabbing hand is a sprite in the grabber's own colourway.
   return "/assets/hand_" + playerIndex(player, playersList) + ".png";
 }
-const GRAB_COLORS = ["#F4B942", "#FF69B4", "#00E5FF", "#BEF264", "#C8A2FF", "#FFC83C", "#78FFEB", "#FFF082"];
+const GRAB_COLORS = ["#F4B942", "#FF69B4", "#00E5FF", "#BEF264", "#C8A2FF", "#FF7043", "#78FFEB", "#FFF082"];
 
 // A grabbed card exists in exactly ONE place on the screen: floating.
 // Its slot keeps only a dashed ghost outline, and the floating card -
@@ -830,7 +846,7 @@ function particles(rect, count = 26, color = null) {
     setTimeout(() => p.remove(), 1100);
   }
 }
-function fireworks(rect, color, bursts = 3) {
+function fireworks(rect, color, bursts = 3, silent = false) {
   if (!rect || reduceMotion) return;
   const cx = rect.x + rect.w / 2, cy = rect.y + rect.h / 2;
   for (let b = 0; b < bursts; b++) {
@@ -873,7 +889,7 @@ function fireworks(rect, color, bursts = 3) {
         sa.onfinish = () => sp.remove();
         setTimeout(() => sp.remove(), 1400);
       }
-      playSfx("firework");
+      if (!silent) playSfx("firework");
     }, b * 240);
   }
 }
@@ -2796,7 +2812,7 @@ function connect(joinMsg) {
   ws = new WebSocket(proto + location.host + "/ws");
   ws.addEventListener("open", () => {
     if ($("disconnect-bar")) $("disconnect-bar").hidden = true;
-    send(joinMsg);
+    send({ ...joinMsg, preferred_color: preferredColor });
     log(`Joined room ${joinMsg.room} as ${myName}`);
   });
   ws.addEventListener("message", (ev) => {
@@ -3117,7 +3133,9 @@ function launchStandingsFireworks() {
     w: 40,
     h: 40,
   };
-  fireworks(fxRect, c, 2);
+  // IMPORTANT: Keep Tiki Standings fireworks completely silent (silent = true).
+  // Do NOT add periodic firework/"psh psh" noises back into the Tiki Standings screen.
+  fireworks(fxRect, c, 2, true);
 }
 function playLavaBubbleSfx() {
   if (!endSfxActive || !sfxOn || sfxVol <= 0) return;
@@ -3190,6 +3208,12 @@ function startEndScreenSfx() {
   scheduleLavaBubble();
 }
 function showLeaderboard(view) {
+  const lbCode = $("lb-room-code");
+  if (lbCode) {
+    const showCode = !!(view && view.room && !view.practice);
+    lbCode.hidden = !showCode;
+    if (showCode) lbCode.textContent = `Room ${view.room}`;
+  }
   const medalSrcs = ["/assets/ico_medal_1.png", "/assets/ico_medal_2.png", "/assets/ico_medal_3.png"];
   const placeLabels = ["1st Place", "2nd Place", "3rd Place"];
   const allPlayers = view.playing_counts
@@ -4488,10 +4512,37 @@ function updateHandCursorAppearance(playersList) {
   const plist = (playersList && playersList.length) ? playersList
     : (v && v.playing_counts ? Object.keys(v.playing_counts)
       : (v && v.players ? v.players : []));
-  const idx = (myName && plist.length) ? playerIndex(myName, plist) : 0;
+  const inGame = !$("game-box").hidden && myName && plist.length > 0;
+  const idx = inGame ? playerIndex(myName, plist) : preferredColor;
   const color = GRAB_COLORS[idx % GRAB_COLORS.length];
   document.body.style.setProperty("--hand-cursor", buildHandCursorCss(color));
 }
+function renderSettingsColorPicker() {
+  const box = $("settings-color-picker");
+  if (!box) return;
+  box.replaceChildren();
+  GRAB_COLORS.forEach((hex, c) => {
+    const sw = document.createElement("button");
+    sw.type = "button";
+    sw.className = "settings-color-swatch" + (preferredColor === c ? " selected" : "");
+    sw.style.backgroundColor = hex;
+    sw.title = `Color ${c + 1}`;
+    sw.setAttribute("aria-label", `Choose color ${c + 1}`);
+    sw.addEventListener("click", () => {
+      preferredColor = c;
+      try { localStorage.setItem("ft_pref_color", String(c)); } catch (err) { /* private mode */ }
+      renderSettingsColorPicker();
+      updateHandCursorAppearance();
+      if (prevView && !prevView.started && !practice) {
+        send({ type: "set_color", color: c });
+      } else if (practice && practice.game) {
+        practiceRender();
+      }
+    });
+    box.append(sw);
+  });
+}
+renderSettingsColorPicker();
 updateHandCursorAppearance();
 if ($("opt-hand-cursor")) $("opt-hand-cursor").addEventListener("change", (e) => {
   handCursorOn = e.target.checked;
@@ -4507,11 +4558,13 @@ let tableSparkX = 0, tableSparkY = 0;
 let tableSparkTimer = null;
 let firecrackerTimer = null;
 function myPlayerColor() {
+  const inGame = !$("game-box").hidden;
+  if (!inGame) return GRAB_COLORS[preferredColor % GRAB_COLORS.length];
   const view = (practice && practice.game) ? practiceView() : prevView;
   const players = view && view.playing_counts ? Object.keys(view.playing_counts)
     : (lastLobbyView && lastLobbyView.players ? lastLobbyView.players : []);
-  const idx = players.length && myName ? playerIndex(myName, players) : 0;
-  return GRAB_COLORS[(idx >= 0 ? idx : 0) % GRAB_COLORS.length];
+  const idx = players.length && myName ? playerIndex(myName, players) : preferredColor;
+  return GRAB_COLORS[(idx >= 0 ? idx : preferredColor) % GRAB_COLORS.length];
 }
 function spawnTableSpark(x, y, count = 4) {
   if (reduceMotion) return;
@@ -5718,6 +5771,14 @@ function practiceTick() {
   if (pPruneGrabs(now)) changed = true;
   if (practice.kind === "tutorial" && tutTick(practice, now)) changed = true;
   if (!practice.info.passive && pBotTick(practice, now)) changed = true;
+  const g = practice.game;
+  const dl = (g.phase === "freaky" && g.freakyDeadline != null) ? g.freakyDeadline
+    : (g.phase === "joker_choose" && g.jokerDeadline != null) ? g.jokerDeadline : null;
+  const curSec = dl != null ? Math.max(0, Math.ceil(dl - now)) : null;
+  if (curSec !== practice.lastCountdownSec) {
+    practice.lastCountdownSec = curSec;
+    if (curSec !== null) changed = true;
+  }
   if (changed) practiceRender();
 }
 function practiceSend(obj) { setTimeout(() => { if (practice) practiceHandle(obj); }, 0); }

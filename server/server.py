@@ -105,11 +105,14 @@ def list_public_rooms():
     return {"rooms": out}
 
 
-def _assign_color(entry: dict, player: str) -> int:
+def _assign_color(entry: dict, player: str, preferred: int | None = None) -> int:
     colors = entry.setdefault("colors", {})
     if player in colors:
         return colors[player]
     used = {colors[p] for p in entry.get("players", []) if p in colors and p != player}
+    if isinstance(preferred, int) and 0 <= preferred < MAX_PLAYERS and preferred not in used:
+        colors[player] = preferred
+        return preferred
     for c in range(MAX_PLAYERS):
         if c not in used:
             colors[player] = c
@@ -572,8 +575,10 @@ async def ws(ws: WebSocket):
                              "double_tap_play": bool(msg.get("double_tap_play", False)),
                              "disconnect_times": {},
                              "bot_next": {}, "shed_quota": {}, "freaky_key": None, "grabs": {}, "giveaway_holder": None}
+                    pref_col = msg.get("preferred_color")
+                    pref_col = pref_col if isinstance(pref_col, int) and 0 <= pref_col < MAX_PLAYERS else None
                     for p in entry["players"]:
-                        _assign_color(entry, p)
+                        _assign_color(entry, p, pref_col if p == player else None)
                     rooms[code] = entry
                     room, name = code, player
                     entry["state"] = GameState.start(list(entry["players"]), now=time.monotonic())
@@ -583,9 +588,14 @@ async def ws(ws: WebSocket):
                 entry = rooms.setdefault(code, {"state": None, "sockets": {}, "waiting": {}, "host": player,
                                                 "players": [], "bots": set(), "bot_difficulty": "easy",
                                                 "solo": False, "public": bool(msg.get("public", False)), "colors": {},
+                                                "pref_colors": {},
                                                 "double_tap_play": False,
                                                 "disconnect_times": {},
                                                 "bot_next": {}, "shed_quota": {}, "freaky_key": None, "grabs": {}, "giveaway_holder": None})
+                pref_col = msg.get("preferred_color")
+                pref_col = pref_col if isinstance(pref_col, int) and 0 <= pref_col < MAX_PLAYERS else None
+                if pref_col is not None:
+                    entry.setdefault("pref_colors", {})[player] = pref_col
                 if player in entry["sockets"] or player in entry.get("waiting", {}):
                     await ws.send_json({"type": "error", "error": f"'{player}' is already in room {code} - pick a different name"})
                     continue
@@ -602,7 +612,7 @@ async def ws(ws: WebSocket):
                         entry.get("disconnect_times", {}).pop(name, None)
                         state.set_disconnected(name, False)
                         entry["sockets"][name] = ws
-                        _assign_color(entry, name)
+                        _assign_color(entry, name, pref_col)
                         start_drivers(room, entry)
                         await broadcast(room)
                     else:
@@ -616,7 +626,7 @@ async def ws(ws: WebSocket):
                 room, name = code, player
                 entry["sockets"][name] = ws
                 entry["players"].append(name)
-                _assign_color(entry, name)
+                _assign_color(entry, name, pref_col)
                 await broadcast(room)
             elif kind == "admit" and room and name:
                 entry = rooms[room]
@@ -629,25 +639,25 @@ async def ws(ws: WebSocket):
                     if msg.get("admit_all"):
                         for wname in list(waiting.keys()):
                             if len(entry["players"]) >= MAX_PLAYERS:
-                                await ws.send_json({"type": "error", "error": f"room {room} is full (max {MAX_PLAYERS} players)"})
+                                await ws.send_json({"type": "error", "error": "Player limit has been reached for this game."})
                                 break
                             wws = waiting.pop(wname)
                             entry["sockets"][wname] = wws
                             if wname not in entry["players"]:
                                 entry["players"].append(wname)
-                            _assign_color(entry, wname)
+                            _assign_color(entry, wname, entry.get("pref_colors", {}).get(wname))
                         await broadcast(room)
                     else:
                         target = str(msg.get("target", "")).strip()
                         if target in waiting:
                             if len(entry["players"]) >= MAX_PLAYERS:
-                                await ws.send_json({"type": "error", "error": f"room {room} is full (max {MAX_PLAYERS} players)"})
+                                await ws.send_json({"type": "error", "error": "Player limit has been reached for this game."})
                             else:
                                 wws = waiting.pop(target)
                                 entry["sockets"][target] = wws
                                 if target not in entry["players"]:
                                     entry["players"].append(target)
-                                _assign_color(entry, target)
+                                _assign_color(entry, target, entry.get("pref_colors", {}).get(target))
                                 await broadcast(room)
             elif kind == "set_color" and room and name:
                 entry = rooms[room]

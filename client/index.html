@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/client/style.css?v=25">
+<link rel="stylesheet" href="/client/style.css?v=27">
 </head>
 <body>
   <h1 id="title">
@@ -449,6 +449,7 @@
       <div id="leaderboard" hidden>
         <div class="tut-card panel leaderboard-card">
           <h2 class="lb-heading"><img class="lb-torch" src="/assets/lb_torch.gif" alt=""><img class="lb-title-tiki" src="/assets/tiki.png" alt="">Tiki Standings<img class="lb-title-tiki flip" src="/assets/tiki.png" alt=""><img class="lb-torch flip" src="/assets/lb_torch.gif" alt=""></h2>
+          <div id="lb-room-code" class="lb-room-code" hidden></div>
           <div class="lb-stage">
             <div id="lb-podium" class="lb-podium"></div>
             <div id="lb-losers"></div>
@@ -495,6 +496,10 @@
       <h2>Settings</h2>
       <label class="opt"><input type="checkbox" id="opt-keys"> Show keybind hints on the table</label>
       <label class="opt"><input type="checkbox" id="opt-hand-cursor"> Use my color circle as cursor</label>
+      <div class="settings-color-row">
+        <span class="settings-color-lbl">My color</span>
+        <div id="settings-color-picker" class="settings-color-picker" role="group" aria-label="Preferred player color"></div>
+      </div>
       <label class="opt"><input type="checkbox" id="opt-vibrate"> Phone vibration</label>
       <label class="opt"><input type="checkbox" id="opt-sfx"> Sound effects (<kbd>N</kbd>)</label>
       <div class="vol-row">
@@ -546,6 +551,6 @@
   </div>
 
   <div id="hand-cursor" class="color-cursor" hidden></div>
-<script src="/client/app.js?v=35"></script>
+<script src="/client/app.js?v=36"></script>
 </body>
 </html>
