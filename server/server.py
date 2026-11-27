@@ -629,7 +629,7 @@ async def ws(ws: WebSocket):
                     continue
                 entry = rooms.setdefault(code, {"state": None, "sockets": {}, "waiting": {}, "host": player,
                                                 "players": [], "bots": set(), "bot_difficulty": "easy",
-                                                "solo": False, "public": bool(msg.get("public", False)), "colors": {},
+                                                "solo": False, "public": bool(msg.get("public", True)), "colors": {},
                                                 "pref_colors": {},
                                                 "double_tap_play": False,
                                                 "disconnect_times": {},

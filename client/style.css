@@ -1365,6 +1365,17 @@ body.in-game h1, body.in-game .home-tagline { display: none; }
   display: flex; align-items: center; justify-content: center; gap: 12px;
   flex-wrap: wrap; pointer-events: none;
 }
+#hud-top.in-lobby #hud-top-row {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: center;
+  justify-items: center;
+  align-items: center;
+  gap: 8px 14px;
+}
+#hud-top.in-lobby #lobby-code-box { grid-column: 1; grid-row: 1; }
+#hud-top.in-lobby #lobby-privacy-box { grid-column: 2; grid-row: 1; }
+#hud-top.in-lobby #status { grid-column: 1 / -1; grid-row: 2; }
 .lobby-hud-box {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
   padding: 6px 18px 8px;

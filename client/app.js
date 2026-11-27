@@ -2983,6 +2983,7 @@ function setMpTab(mode) {
   if ($("mp-create-panel")) $("mp-create-panel").hidden = !showCreate;
   showError("");
   if (showCreate) {
+    if ($("create-public")) $("create-public").checked = true;
     assignNextRoomCode();
   } else if (showJoin) {
     loadPublicRooms();
@@ -3043,17 +3044,18 @@ function showHomeSubpage(page, skipBlur = false) {
   });
 
   if (shouldCrossDissolve) {
+    const isFixed = getComputedStyle(outgoing).position === "fixed";
     const jr = joinBox.getBoundingClientRect();
     const r = outgoing.getBoundingClientRect();
     outgoing._dissolvingOut = true;
     clearHomeDissolve(outgoing);
-    if (r.width && r.height) {
+    outgoing.style.pointerEvents = "none";
+    if (!isFixed && r.width && r.height) {
       outgoing.style.position = "absolute";
       outgoing.style.left = (r.left - jr.left) + "px";
       outgoing.style.top = (r.top - jr.top) + "px";
       outgoing.style.width = r.width + "px";
       outgoing.style.margin = "0";
-      outgoing.style.pointerEvents = "none";
       outgoing.style.zIndex = "2";
     }
     const finishOut = () => {
@@ -4968,16 +4970,50 @@ if ($("join")) {
     }
   });
 }
+function setSettingsOpen(open) {
+  const el = $("settings");
+  if (!el) return;
+  clearTimeout(el._fadeTimer);
+  el._fadeTimer = null;
+  if (el._fadeAnim) {
+    try { el._fadeAnim.cancel(); } catch (e) {}
+    el._fadeAnim = null;
+  }
+  if (open) {
+    el._closing = false;
+    el.style.pointerEvents = "";
+    el.hidden = false;
+    if (!reduceMotion) {
+      el._fadeAnim = el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: "ease-out" });
+      el._fadeTimer = setTimeout(() => { el._fadeAnim = null; }, 220);
+    }
+  } else {
+    if (el.hidden) return;
+    if (reduceMotion) { el.hidden = true; el.style.pointerEvents = ""; return; }
+    el._closing = true;
+    el.style.pointerEvents = "none";
+    const finish = () => {
+      el._closing = false;
+      if (el._fadeAnim) { try { el._fadeAnim.cancel(); } catch (e) {} el._fadeAnim = null; }
+      el.style.pointerEvents = "";
+      el.hidden = true;
+    };
+    el._fadeAnim = el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, easing: "ease-out", fill: "forwards" });
+    el._fadeAnim.onfinish = finish;
+    el._fadeTimer = setTimeout(finish, 210);
+  }
+}
 $("settings-btn").addEventListener("click", (e) => {
   e.currentTarget.blur();
   if ($("leave")) $("leave").hidden = $("game-box").hidden;
-  $("settings").hidden = !$("settings").hidden;
+  const el = $("settings");
+  setSettingsOpen(el.hidden || !!el._closing);
 });
-$("set-close").addEventListener("click", () => { $("settings").hidden = true; });
+$("set-close").addEventListener("click", () => setSettingsOpen(false));
 $("settings").addEventListener("click", (e) => {
-  if (e.target === $("settings")) $("settings").hidden = true;
+  if (e.target === $("settings")) setSettingsOpen(false);
 });
-$("set-how").addEventListener("click", () => { $("settings").hidden = true; tutOpen(); });
+$("set-how").addEventListener("click", () => { setSettingsOpen(false); tutOpen(); });
 function isNativeFullscreen() {
   return !!(document.fullscreenElement || document.webkitFullscreenElement);
 }
@@ -5278,12 +5314,13 @@ window.addEventListener("keydown", (ev) => {
   if (!ev.repeat && !ev.shiftKey && (ev.key === "`" || ev.code === "Backquote")) {
     ev.preventDefault();
     if ($("leave")) $("leave").hidden = $("game-box").hidden;
-    $("settings").hidden = !$("settings").hidden;
+    const el = $("settings");
+    setSettingsOpen(el.hidden || !!el._closing);
     return;
   }
   if (key === "escape" && !ev.repeat) {
     ev.preventDefault();
-    if (!$("settings").hidden) { $("settings").hidden = true; return; }
+    if (!$("settings").hidden && !$("settings")._closing) { setSettingsOpen(false); return; }
     if (!$("tutorial").hidden) { $("tutorial").hidden = true; return; }
     if (grab) { cancelGrab(); return; }
     return;
