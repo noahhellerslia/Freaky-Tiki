@@ -282,30 +282,30 @@ function tutAllowedMove(move) {
   if (!move) return false;
   const top = g.middle.length ? g.middle[g.middle.length - 1] : null;
   switch (t.step) {
-    case 1: return move.type === "play";
-    case 2: {
+    case 2: return move.type === "play";
+    case 3: {
       if (move.type !== "stack" || move.owner !== me) return false;
       const c = g.stacking[me] && g.stacking[me][move.slot];
       return !!(c && top && pWithin(c, top));
     }
-    case 3: return move.type === "stack" && move.owner === me;
-    case 4: {
+    case 4: return move.type === "stack" && move.owner === me;
+    case 5: {
       if (move.type !== "stack" || move.owner !== P_BOTS[0]) return false;
       const c = g.stacking[P_BOTS[0]] && g.stacking[P_BOTS[0]][move.slot];
       return !!(c && top && pWithin(c, top));
     }
-    case 5: return g.phase === "freaky" ? move.type === "freaky" : move.type === "play";
-    case 6: return g.phase === "freaky" && move.type === "shed";
-    case 7:
+    case 6: return g.phase === "freaky" ? move.type === "freaky" : move.type === "play";
+    case 7: return g.phase === "freaky" && move.type === "shed";
+    case 8:
       if (g.phase === "joker") return move.type === "slap_press";
       if (g.phase === "joker_choose") return move.type === "slap_choose";
       return false;
-    case 8:
+    case 9:
       if (g.phase === "joker") return move.type === "slap_press";
       if (g.phase === "joker_choose") return move.type === "slap_choose";
       if (move.type !== "stack" || move.owner !== me) return false;
       return pIsJoker(g.stacking[me] && g.stacking[me][move.slot]);
-    case 9: {
+    case 10: {
       if (move.type !== "stack" || move.owner !== me) return false;
       const c = g.stacking[me] && g.stacking[me][move.slot];
       return !!(c && top && pWithin(c, top));
@@ -3112,12 +3112,15 @@ if ($("fast-bots-btn")) $("fast-bots-btn").addEventListener("click", () => {
 let lbShownFor = null;
 let lastDropSeq = 0;
 let endSfxActive = false, endFireAudio = null, endLavaTimer = null, endLavaRumble = null, endFireworksTimer = null;
+let endFireworkBurstTimers = [];
 function stopEndScreenSfx() {
   endSfxActive = false;
   clearTimeout(endLavaTimer);
   endLavaTimer = null;
   clearInterval(endFireworksTimer);
   endFireworksTimer = null;
+  endFireworkBurstTimers.forEach((id) => clearTimeout(id));
+  endFireworkBurstTimers = [];
   if (endLavaRumble) {
     try { endLavaRumble.src.stop(); } catch (e) { /* ignore */ }
     try { endLavaRumble.gain.disconnect(); } catch (e) { /* ignore */ }
@@ -3128,6 +3131,132 @@ function stopEndScreenSfx() {
   }
 }
 let lbWinnerColors = ["#ffcf4a"];
+function playStandingsFireworkSfx(launchMs = 420, variant = 0) {
+  if (!endSfxActive || !sfxOn || sfxVol <= 0 || document.hidden) return;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!sfxCtx && AC) sfxCtx = new AC();
+    if (!sfxCtx) return;
+    if (sfxCtx.state === "suspended") sfxCtx.resume().catch(() => {});
+    const t0 = sfxCtx.currentTime;
+    const launchSec = Math.max(0.26, launchMs / 1000);
+    const tBurst = t0 + launchSec;
+    const pitchJitter = 0.9 + Math.random() * 0.22;
+
+    // 1) Pre-explosion launch sound (3 distinct variations: whistle, zip, mortar whoosh)
+    if (variant === 0) {
+      // Rising rocket whistle + airy whoosh
+      const wh = sfxCtx.createOscillator();
+      const whG = sfxCtx.createGain();
+      wh.type = "sine";
+      wh.frequency.setValueAtTime(520 * pitchJitter, t0);
+      wh.frequency.exponentialRampToValueAtTime(1420 * pitchJitter, tBurst - 0.03);
+      whG.gain.setValueAtTime(0.0005, t0);
+      whG.gain.linearRampToValueAtTime(Math.max(0.008, sfxVol * 0.12), t0 + launchSec * 0.35);
+      whG.gain.exponentialRampToValueAtTime(0.0005, tBurst);
+      wh.connect(whG).connect(sfxCtx.destination);
+      wh.start(t0);
+      wh.stop(tBurst + 0.02);
+    } else if (variant === 1) {
+      // Bright bottle-rocket zip
+      const zip = sfxCtx.createOscillator();
+      const zipG = sfxCtx.createGain();
+      zip.type = "triangle";
+      zip.frequency.setValueAtTime(640 * pitchJitter, t0);
+      zip.frequency.exponentialRampToValueAtTime(1750 * pitchJitter, tBurst - 0.02);
+      zipG.gain.setValueAtTime(0.0005, t0);
+      zipG.gain.linearRampToValueAtTime(Math.max(0.007, sfxVol * 0.10), t0 + 0.06);
+      zipG.gain.exponentialRampToValueAtTime(0.0005, tBurst);
+      zip.connect(zipG).connect(sfxCtx.destination);
+      zip.start(t0);
+      zip.stop(tBurst + 0.02);
+    } else {
+      // Soft mortar tube thump before rising air whoosh
+      const th = sfxCtx.createOscillator();
+      const thG = sfxCtx.createGain();
+      th.type = "sine";
+      th.frequency.setValueAtTime(135 * pitchJitter, t0);
+      th.frequency.exponentialRampToValueAtTime(52 * pitchJitter, t0 + 0.11);
+      thG.gain.setValueAtTime(0.001, t0);
+      thG.gain.linearRampToValueAtTime(Math.max(0.012, sfxVol * 0.22), t0 + 0.008);
+      thG.gain.exponentialRampToValueAtTime(0.0005, t0 + 0.13);
+      th.connect(thG).connect(sfxCtx.destination);
+      th.start(t0);
+      th.stop(t0 + 0.14);
+    }
+    // Filtered rising noise whoosh for all launch variants
+    const wLen = Math.max(1, Math.floor(sfxCtx.sampleRate * launchSec));
+    const wBuf = sfxCtx.createBuffer(1, wLen, sfxCtx.sampleRate);
+    const wData = wBuf.getChannelData(0);
+    for (let i = 0; i < wLen; i++) {
+      const p = i / wLen;
+      wData[i] = (Math.random() * 2 - 1) * Math.sin(p * Math.PI);
+    }
+    const wSrc = sfxCtx.createBufferSource();
+    wSrc.buffer = wBuf;
+    const wBp = sfxCtx.createBiquadFilter();
+    wBp.type = "bandpass";
+    wBp.Q.value = variant === 2 ? 1.8 : 3.2;
+    wBp.frequency.setValueAtTime(700 * pitchJitter, t0);
+    wBp.frequency.exponentialRampToValueAtTime(2200 * pitchJitter, tBurst);
+    const wGain = sfxCtx.createGain();
+    wGain.gain.setValueAtTime(Math.max(0.006, sfxVol * 0.11), t0);
+    wSrc.connect(wBp).connect(wGain).connect(sfxCtx.destination);
+    wSrc.start(t0);
+
+    // 2) Main firework explosion pop/boom (pitched per variant)
+    const boom = sfxCtx.createOscillator();
+    const boomG = sfxCtx.createGain();
+    boom.type = variant === 2 ? "sine" : "triangle";
+    const fStart = (variant === 2 ? 130 : variant === 1 ? 175 : 150) * pitchJitter;
+    boom.frequency.setValueAtTime(fStart, tBurst);
+    boom.frequency.exponentialRampToValueAtTime(34, tBurst + 0.24);
+    boomG.gain.setValueAtTime(0.001, tBurst);
+    boomG.gain.linearRampToValueAtTime(Math.max(0.015, sfxVol * (variant === 2 ? 0.30 : 0.24)), tBurst + 0.008);
+    boomG.gain.exponentialRampToValueAtTime(0.0005, tBurst + 0.28);
+    boom.connect(boomG).connect(sfxCtx.destination);
+    boom.start(tBurst);
+    boom.stop(tBurst + 0.30);
+
+    const bDur = variant === 2 ? 0.42 : 0.32;
+    const bLen = Math.max(1, Math.floor(sfxCtx.sampleRate * bDur));
+    const bBuf = sfxCtx.createBuffer(1, bLen, sfxCtx.sampleRate);
+    const bData = bBuf.getChannelData(0);
+    for (let i = 0; i < bLen; i++) bData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bLen, 1.8);
+    const bSrc = sfxCtx.createBufferSource();
+    bSrc.buffer = bBuf;
+    const bLp = sfxCtx.createBiquadFilter();
+    bLp.type = "lowpass";
+    bLp.frequency.setValueAtTime((variant === 1 ? 2600 : 1900) * pitchJitter, tBurst);
+    bLp.frequency.exponentialRampToValueAtTime(280, tBurst + bDur);
+    const bGain = sfxCtx.createGain();
+    bGain.gain.setValueAtTime(Math.max(0.012, sfxVol * 0.22), tBurst);
+    bGain.gain.exponentialRampToValueAtTime(0.0005, tBurst + bDur);
+    bSrc.connect(bLp).connect(bGain).connect(sfxCtx.destination);
+    bSrc.start(tBurst);
+
+    // 3) Sparkling crackle pops trailing after the burst
+    const crackles = variant === 1 ? 6 : 4;
+    for (let i = 0; i < crackles; i++) {
+      const ct = tBurst + 0.11 + Math.random() * 0.36;
+      const cLen = Math.max(1, Math.floor(sfxCtx.sampleRate * 0.022));
+      const cBuf = sfxCtx.createBuffer(1, cLen, sfxCtx.sampleRate);
+      const cData = cBuf.getChannelData(0);
+      for (let j = 0; j < cLen; j++) cData[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / cLen, 2.2);
+      const cSrc = sfxCtx.createBufferSource();
+      cSrc.buffer = cBuf;
+      const cHp = sfxCtx.createBiquadFilter();
+      cHp.type = "bandpass";
+      cHp.frequency.value = 1800 + Math.random() * 2400;
+      cHp.Q.value = 2.0;
+      const cGain = sfxCtx.createGain();
+      cGain.gain.setValueAtTime(Math.max(0.006, sfxVol * (0.11 + Math.random() * 0.07)), ct);
+      cGain.gain.exponentialRampToValueAtTime(0.0005, ct + 0.022);
+      cSrc.connect(cHp).connect(cGain).connect(sfxCtx.destination);
+      cSrc.start(ct);
+    }
+  } catch (e) { /* audio unsupported */ }
+}
 function launchStandingsFireworks() {
   const lb = $("leaderboard");
   const podium = $("lb-podium");
@@ -3137,15 +3266,33 @@ function launchStandingsFireworks() {
   if (!w || !h) return;
   const colors = lbWinnerColors.length ? lbWinnerColors : ["#ffcf4a"];
   const c = colors[Math.floor(Math.random() * colors.length)];
-  const fxRect = {
-    x: w * (0.16 + Math.random() * 0.68) - 16,
-    y: h * (0.14 + Math.random() * 0.42) - 16,
-    w: 32,
-    h: 32,
-  };
-  // IMPORTANT: Keep Tiki Standings fireworks completely silent (silent = true).
-  // Do NOT add periodic firework/"psh psh" noises back into the Tiki Standings screen.
-  fireworks(fxRect, c, 2, true, fxHost);
+  const tx = w * (0.16 + Math.random() * 0.68);
+  const ty = h * (0.14 + Math.random() * 0.40);
+  const variant = Math.floor(Math.random() * 3);
+  const launchMs = variant === 1 ? 340 : variant === 2 ? 480 : 420;
+  // NOTE: Never use the old flat firework.wav ("psh psh") here — use our varied
+  // synthesized launch-and-burst firework audio synced to the rising rocket + burst.
+  playStandingsFireworkSfx(launchMs, variant);
+  const trail = document.createElement("div");
+  trail.className = "fw-spark";
+  trail.style.width = "4px";
+  trail.style.height = "8px";
+  trail.style.left = tx + "px";
+  trail.style.top = (h + 4) + "px";
+  trail.style.background = "#fff8dc";
+  trail.style.boxShadow = `0 0 8px ${c}, 0 6px 8px ${c}`;
+  fxHost.append(trail);
+  const ta = trail.animate([
+    { top: (h + 4) + "px", opacity: 0.95, transform: "translate(-50%,-50%) scaleY(1.3)" },
+    { top: ty + "px", opacity: 1, transform: "translate(-50%,-50%) scaleY(0.8)" },
+  ], { duration: launchMs, easing: "cubic-bezier(.2,.7,.3,1)", fill: "forwards" });
+  ta.onfinish = () => trail.remove();
+  setTimeout(() => trail.remove(), launchMs + 120);
+  const tid = setTimeout(() => {
+    if (!endSfxActive || !fxHost.isConnected || lb.hidden) return;
+    fireworks({ x: tx - 16, y: ty - 16, w: 32, h: 32 }, c, 1, true, fxHost);
+  }, launchMs);
+  endFireworkBurstTimers.push(tid);
 }
 function playLavaBubbleSfx() {
   if (!endSfxActive || !sfxOn || sfxVol <= 0) return;
@@ -4706,6 +4853,9 @@ $("settings-btn").addEventListener("click", (e) => {
   $("settings").hidden = !$("settings").hidden;
 });
 $("set-close").addEventListener("click", () => { $("settings").hidden = true; });
+$("settings").addEventListener("click", (e) => {
+  if (e.target === $("settings")) $("settings").hidden = true;
+});
 $("set-how").addEventListener("click", () => { $("settings").hidden = true; tutOpen(); });
 function isNativeFullscreen() {
   return !!(document.fullscreenElement || document.webkitFullscreenElement);
@@ -5661,7 +5811,7 @@ function pBuild(kind, me) {
 
 const P_TEXT = {
   turns: ["Taking turns",
-    "On your turn, HOLD your pile (or hold P) to lift its top card, keep holding, then press SPACE - or let go over the middle - to play it. " +
+    "On your turn, HOLD your pile (or hold D) to lift its top card, keep holding, then press SPACE - or let go over the middle - to play it. " +
     "Let go anywhere else and it goes back. Hard speeds up the pace and lets bots stack."],
   stack: ["Stacking",
     "Any face-up card within one rank of the middle card (Ace wraps to King) can be stacked, from ANY player's hand. " +
@@ -5675,7 +5825,7 @@ const P_TEXT = {
 };
 
 const P_GOAL_TEXT = {
-  turns: "Flip 3 cards from your playing pile on your turn (hold P or drag).",
+  turns: "Flip 3 cards from your playing pile on your turn (hold D or drag).",
   stack: "Stack a matching face-up card within ±1 rank onto the middle.",
   freaky: "Flip your matching card, then click the Tiki 3 times (or press F).",
   slap: "When the bot flips the Joker, slap twice (SPACE or click) and give the stack away.",
@@ -5780,15 +5930,36 @@ function pPruneGrabs(now) {
 }
 function practiceTick() {
   if (!practice) return;
-  if (practice.kind === "tutorial" && practice.tut && practice.tut.step === 0) return;
-  if (practice.kind !== "tutorial" && practice.kind !== "solo" && practice.done) return;
-  if (practice.kind === "slap" && practice.stage === 0) return;
-  const now = pnow();
-  let changed = practice.game.tick(now);
-  if (pPruneGrabs(now)) changed = true;
-  if (practice.kind === "tutorial" && tutTick(practice, now)) changed = true;
-  if (!practice.info.passive && pBotTick(practice, now)) changed = true;
   const g = practice.game;
+  const now = pnow();
+  if (practice.kind === "tutorial") {
+    const t = practice.tut;
+    // Freeze the game during intro cards, dealing, info steps, or once the step is complete.
+    if (!t || t.step === 0 || t.step === 1 || t.step >= TUT_STEPS.length - 1
+        || t.phase === "intro" || t.dealing || t.done || t.retry) {
+      return;
+    }
+    // Keep tutorial deadlines paused so the player must complete the required action.
+    if ((t.step === 6 || t.step === 7) && g.phase === "freaky") {
+      g.freakyDeadline = now + 99;
+    }
+    if ((t.step === 8 || t.step === 9) && g.phase === "joker_choose") {
+      g.jokerDeadline = now + 99;
+    }
+    let changed = g.tick(now);
+    if (pPruneGrabs(now)) changed = true;
+    if (tutTick(practice, now)) changed = true;
+    // Only allow bots to shed on Step 6 after the player triggers Freaky Tiki.
+    // On all other tutorial steps, bots never act autonomously.
+    if (t.step === 6 && g.phase === "freaky" && pBotTick(practice, now)) changed = true;
+    if (changed) practiceRender();
+    return;
+  }
+  if (practice.kind !== "solo" && practice.done) return;
+  if (practice.kind === "slap" && practice.stage === 0) return;
+  let changed = g.tick(now);
+  if (pPruneGrabs(now)) changed = true;
+  if (!practice.info.passive && pBotTick(practice, now)) changed = true;
   const dl = (g.phase === "freaky" && g.freakyDeadline != null) ? g.freakyDeadline
     : (g.phase === "joker_choose" && g.jokerDeadline != null) ? g.jokerDeadline : null;
   const curSec = dl != null ? Math.max(0, Math.ceil(dl - now)) : null;
