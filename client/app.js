@@ -1373,6 +1373,19 @@ function tikiSrc(player, playersList) {
 }
 
 function render(view, keepError) {
+  if (lbExitInFlight && view && view.started && view.phase !== "over") {
+    pendingPostStandingsView = view;
+    return;
+  }
+  if (!lbExitInFlight && prevView && prevView.phase === "over" && view && view.started && view.phase !== "over" && $("leaderboard") && !$("leaderboard").hidden) {
+    pendingPostStandingsView = view;
+    animateStandingsExit(() => {
+      const next = pendingPostStandingsView;
+      pendingPostStandingsView = null;
+      if (next) render(next);
+    });
+    return;
+  }
   fastBotsAnim = !!(view && view.started && view.fast_bots);
   currentPlayerColors = (view && view.player_colors) ? view.player_colors : {};
   const oldView = prevView;
@@ -3771,8 +3784,18 @@ function showLeaderboard(view) {
   }
 }
 let lbExitInFlight = false;
+let pendingPostStandingsView = null;
+function clearBoardForTransition() {
+  document.querySelectorAll("#ring .seat").forEach((s) => s.remove());
+  if ($("table-center")) $("table-center").replaceChildren();
+  if ($("tiki-box")) $("tiki-box").hidden = true;
+  if ($("joker-timer")) $("joker-timer").hidden = true;
+  if ($("status")) $("status").textContent = "";
+  if ($("action-info")) $("action-info").textContent = "";
+}
 function animateStandingsExit(onDone) {
   const lb = $("leaderboard");
+  clearBoardForTransition();
   if (!lb || lb.hidden || reduceMotion || lbExitInFlight) {
     if (lb) lb.hidden = true;
     if ($("board-peek")) $("board-peek").hidden = true;
