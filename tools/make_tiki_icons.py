@@ -231,48 +231,78 @@ def make_stopwatch():
 
 def make_stopwatch_anim():
     import math
-    frames = 12
-    sheet = Image.new("RGBA", (16 * frames, 16), (0, 0, 0, 0))
-    cx, cy = 7.5, 8.5
+    size = 24
+    frames = 24
+    sheet = Image.new("RGBA", (size * frames, size), (0, 0, 0, 0))
+    cx, cy = 11.5, 13.0
+    DIAL_REM = CREAM                  # remaining time (bright parchment)
+    DIAL_ELAPSED = (182, 118, 72, 255)  # elapsed time (shaded warm amber-wood)
+    TICK_COL = (128, 86, 48, 255)
     for f in range(frames):
-        img, d = canvas()
-        # Stopwatch body & crown (matches make_stopwatch)
-        d.rectangle([6, 1, 9, 2], fill=GOLD_HI, outline=INK)
-        d.rectangle([7, 2, 8, 3], fill=GOLD_D)
-        d.point([(12, 4), (13, 3)], fill=GOLD)
-        d.ellipse([2, 3, 13, 14], fill=GOLD, outline=INK)
-        d.ellipse([4, 5, 11, 12], fill=CREAM, outline=INK)
-        d.point([(5, 6)], fill=GOLD_HI)
+        img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        d = ImageDraw.Draw(img)
+        # Top crown button & stem
+        d.rectangle([9, 1, 14, 3], fill=GOLD_HI, outline=INK)
+        d.rectangle([10, 3, 13, 5], fill=GOLD_D, outline=INK)
+        # Side stopwatch pusher
+        d.rectangle([18, 5, 20, 7], fill=GOLD, outline=INK)
+        # Outer gold casing
+        d.ellipse([3, 4, 20, 21], fill=GOLD, outline=INK)
+        # Highlight arc on top-left bezel
+        d.point([(6, 6), (7, 5), (8, 5), (5, 7)], fill=GOLD_HI)
+        # Shadow arc on bottom-right bezel
+        d.point([(17, 19), (18, 18), (19, 17), (16, 20)], fill=GOLD_D)
+        # Inner dial face
+        d.ellipse([5, 6, 18, 19], fill=DIAL_REM, outline=INK)
 
-        # Remaining fraction (1.0 -> 0.0)
-        frac = 1.0 - (f / float(frames - 1))
-        sweep_rad = frac * 2.0 * math.pi
-        px = img.load()
-        for y in range(6, 12):
-            for x in range(5, 11):
-                if px[x, y][:3] == CREAM[:3]:
+        # Elapsed fraction goes 0.0 (start) -> 1.0 (time up)
+        elapsed_frac = f / float(frames - 1)
+        sweep_rad = elapsed_frac * 2.0 * math.pi
+        for y in range(7, 19):
+            for x in range(6, 18):
+                cur = img._px[y][x] if hasattr(img, "_px") else img.getpixel((x, y))
+                if cur[:3] == DIAL_REM[:3]:
                     dx, dy = x - cx, y - cy
-                    # Clockwise angle from 12 o'clock (0 .. 2*pi)
-                    ang = (math.atan2(dx, -dy)) % (2.0 * math.pi)
-                    if frac > 0.0 and ang <= sweep_rad + 1e-6:
-                        # Semi-transparent torch-orange pixel overlay blended onto cream dial
-                        r0, g0, b0, a0 = px[x, y]
-                        or_, og, ob, oa = 255, 138, 61, 150
-                        alpha = oa / 255.0
-                        px[x, y] = (
-                            int(r0 * (1 - alpha) + or_ * alpha),
-                            int(g0 * (1 - alpha) + og * alpha),
-                            int(b0 * (1 - alpha) + ob * alpha),
-                            255,
-                        )
-        # Pixel clock hand at the sweep edge
+                    ang = math.atan2(dx, -dy) % (2.0 * math.pi)
+                    if elapsed_frac > 0.0 and (elapsed_frac >= 0.999 or ang <= sweep_rad):
+                        if hasattr(img, "_px"):
+                            img._px[y][x] = DIAL_ELAPSED
+                        else:
+                            img.putpixel((x, y), DIAL_ELAPSED)
+
+        # Subtle 12/3/6/9 pixel hour ticks
+        for tx, ty in ((12, 7), (17, 13), (12, 18), (6, 13)):
+            if hasattr(img, "_px"):
+                img._px[ty][tx] = TICK_COL
+            else:
+                img.putpixel((tx, ty), TICK_COL)
+
+        # Moving pixel-art clock hand at sweep edge
         hand_ang = sweep_rad
-        for r in (0, 1, 2, 3):
+        for r in (1, 2, 3, 4, 5):
             hx = int(round(cx + math.sin(hand_ang) * r))
             hy = int(round(cy - math.cos(hand_ang) * r))
-            if 5 <= hx <= 10 and 6 <= hy <= 11:
-                px[hx, hy] = HIBISCUS if r >= 2 else INK
-        sheet.paste(img, (f * 16, 0))
+            if 6 <= hx <= 17 and 7 <= hy <= 18:
+                col = HIBISCUS if r >= 4 else INK
+                if hasattr(img, "_px"):
+                    img._px[hy][hx] = col
+                else:
+                    img.putpixel((hx, hy), col)
+        # Center pivot pin
+        for px0, py0 in ((11, 13), (12, 13)):
+            if hasattr(img, "_px"):
+                img._px[py0][px0] = INK
+            else:
+                img.putpixel((px0, py0), INK)
+
+        # Blit frame onto horizontal sprite sheet
+        if hasattr(sheet, "paste"):
+            sheet.paste(img, (f * size, 0))
+        else:
+            ox = f * size
+            for y in range(size):
+                for x in range(size):
+                    sheet._px[y][ox + x] = img._px[y][x]
     return sheet
 
 

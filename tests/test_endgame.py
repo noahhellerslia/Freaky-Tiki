@@ -122,6 +122,8 @@ def standstill_game():
 def E6_standstill_ends_game():
     gs = standstill_game()
     assert gs.tick(100.0) is True
+    assert gs.phase == "open" and gs.standstill_deadline is not None
+    assert gs.tick(110.5) is True
     assert gs.phase == "over", gs.phase
     assert gs.finished == ["D"]                       # standings as they are
     assert sorted(gs.losers) == ["A", "B", "C"]       # the players left lose

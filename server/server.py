@@ -280,6 +280,7 @@ async def broadcast(room_code: str):
 async def room_ticker(room_code: str):
     """Time-driven rules (replacements at +0.25s, stacker-start at +2s,
     Freaky Tiki auto-resolve at +10s, disconnect drop at +30s) need a clock."""
+    last_countdown_sec = None
     try:
         while room_code in rooms:
             entry = rooms[room_code]
@@ -298,6 +299,19 @@ async def room_ticker(room_code: str):
                         if p in entry["players"]:
                             entry["players"].remove(p)
                         changed = True
+            # Keep countdown readouts ticking smoothly once per second
+            dl = None
+            if state.phase == "freaky" and state.freaky_deadline is not None:
+                dl = state.freaky_deadline
+            elif state.phase == "joker_choose" and state.joker_deadline is not None:
+                dl = state.joker_deadline
+            elif state.phase == "open" and state.standstill_deadline is not None:
+                dl = state.standstill_deadline
+            cur_sec = max(0, int((dl - now) + 0.999)) if dl is not None else None
+            if cur_sec != last_countdown_sec:
+                last_countdown_sec = cur_sec
+                if cur_sec is not None:
+                    changed = True
             if changed:
                 await broadcast(room_code)
             if state.phase == "over":
@@ -319,7 +333,7 @@ BOT_PROFILES = {
         "open_delay": 1.35,
         "stack_prob": 0.55,
         "smart_target": False,
-        "stack_joker": False,
+        "stack_joker": True,
         "shed_range": (0, 2),
         "delay": {
             "play": (1.45, 2.35),
@@ -395,13 +409,21 @@ def _bot_move(state: GameState, bot: str, shed_quota: dict, difficulty: str = "e
             else:
                 owner, slot = random.choice(options)
             return {"type": "stack", "owner": owner, "slot": slot}
-        # Hard bots can also drop a Joker from their own stacking hand when
-        # the middle stack is worth weaponizing (or they are close to winning).
+        # Bots are willing to drop a Joker from their own stacking hand so
+        # games don't stall, or when they have no playing cards / stack is big.
         if prof["stack_joker"] and not top.is_joker:
             own_jokers = [i for i, c in enumerate(state.stacking.get(bot, []))
                           if c is not None and c.is_joker]
-            if own_jokers and (len(state.middle) >= 4 or state.total(bot) <= 3):
+            no_playing_left = not any(state.playing[p] for p in state.active_players())
+            if own_jokers and (no_playing_left or not state.playing[bot] or len(state.middle) >= 3 or state.total(bot) <= 3):
                 return {"type": "stack", "owner": bot, "slot": own_jokers[0]}
+    # Also allow playing a stacking-hand Joker on an empty table if nobody has playing cards
+    if not state.middle and ph in ("open", "stacked", "stacker_start") and prof["stack_joker"]:
+        own_jokers = [i for i, c in enumerate(state.stacking.get(bot, []))
+                      if c is not None and c.is_joker]
+        no_playing_left = not any(state.playing[p] for p in state.active_players())
+        if own_jokers and (no_playing_left or not state.playing[bot]):
+            return {"type": "stack", "owner": bot, "slot": own_jokers[0]}
     return None
 
 

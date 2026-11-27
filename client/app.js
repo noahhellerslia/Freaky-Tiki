@@ -659,8 +659,8 @@ function flyCard(from, to, cardName, opts = {}) {
   wrap.append(img);
   if (opts.hideEl) opts.hideEl.style.visibility = "hidden";
   if (opts.hideAlso) opts.hideAlso.style.visibility = "hidden";
-  const fw = from.w || 48, fh = Math.round(fw * (88 / 64));
-  const tw = to.w || fw, th = Math.round(tw * (88 / 64));
+  const fw = from.w || 48, fh = from.h || Math.round(fw * (88 / 64));
+  const tw = to.w || fw, th = to.h || Math.round(tw * (88 / 64));
   const rot = opts.flip ? 0 : (Math.random() * 10 - 5);
   const fromRot = from.rot || 0;
   const baseToRot = to.rot !== undefined ? to.rot : rot;
@@ -2031,7 +2031,7 @@ function renderRing(view, canGo, lobbyTikiRects = null, gameJustStarted = false)
       if (player === myName && pim && !lifted) {
         pim.classList.add("clickable");
         attachHold(pim, { kind: "play" }, "Hold to lift your top card (keep holding), then press SPACE or let go over the middle");
-        const kh = keyHint("P");
+        const kh = keyHint("D");
         if (isMidDeal) kh.style.visibility = "hidden";
         pw.append(kh);
       }
@@ -2153,29 +2153,28 @@ function runMultiDealAnimation(view) {
   const cy = rr && rr.height ? (rr.top + rr.height / 2) : (innerHeight / 2);
   const fromR = { x: cx - 32, y: cy - 44, w: 64, h: 88 };
   const dealPlayers = Object.keys(view.playing_counts || {});
-  const pileImgs = dealPlayers.map((p) => {
-    const pSeat = seatEl(p);
-    return pSeat && pSeat.querySelector(".seat-pile");
-  });
-  const pileBadges = dealPlayers.map((p) => {
-    const pSeat = seatEl(p);
-    return pSeat && pSeat.querySelector(".pilewrap .pile-count");
-  });
+  const getPileImg = (p) => { const s = seatEl(p); return s && s.querySelector(".seat-pile"); };
+  const getPileBadge = (p) => { const s = seatEl(p); return s && s.querySelector(".pilewrap .pile-count"); };
+  const getPileRect = (p) => {
+    const s = seatEl(p);
+    return cardRectOf(getPileImg(p) || (s && s.querySelector(".pilewrap"))) || fromR;
+  };
+  const getSlotImg = (p, slot) => {
+    const s = seatEl(p);
+    const list = s ? [...s.querySelectorAll(".backs .stack-wrap img")] : [];
+    return list[slot] || null;
+  };
+  const getSlotRect = (p, slot) => cardRectOf(getSlotImg(p, slot)) || getPileRect(p);
+  const pileImgs = dealPlayers.map((p) => getPileImg(p));
+  const pileBadges = dealPlayers.map((p) => getPileBadge(p));
   const pileHints = dealPlayers.map((p) => {
     const pSeat = seatEl(p);
     return pSeat && pSeat.querySelector(".pilewrap .key-hint");
-  });
-  const pileRects = dealPlayers.map((p, idx) => {
-    const pSeat = seatEl(p);
-    return cardRectOf(pileImgs[idx] || (pSeat && pSeat.querySelector(".pilewrap"))) || fromR;
   });
   const slotImgs = dealPlayers.map((p) => {
     const pSeat = seatEl(p);
     return pSeat ? [...pSeat.querySelectorAll(".backs .stack-wrap img")] : [];
   });
-  const slotRects = dealPlayers.map((p, idx) =>
-    slotImgs[idx].map((im) => cardRectOf(im) || pileRects[idx])
-  );
   pileImgs.forEach((im) => { if (im) im.style.visibility = "hidden"; });
   pileBadges.forEach((b) => { if (b) b.style.visibility = "hidden"; });
   pileHints.forEach((h) => { if (h) h.style.visibility = "hidden"; });
@@ -2300,9 +2299,9 @@ function runMultiDealAnimation(view) {
             const d = cursorMs + k * perCardDelay;
             const isFirst = k === 0;
             setTimeout(() => {
-              peelFromCircle(pileRects[pIdx], "card_back", {
-                hideEl: isFirst ? pileImgs[pIdx] : null,
-                hideAlso: isFirst ? pileBadges[pIdx] : null,
+              peelFromCircle(getPileRect(p), "card_back", {
+                hideEl: isFirst ? getPileImg(p) : null,
+                hideAlso: isFirst ? getPileBadge(p) : null,
               });
               playSfx("stack");
               if (k === 0) vibrate(10);
@@ -2317,11 +2316,11 @@ function runMultiDealAnimation(view) {
             const p = dealPlayers[pIdx];
             const cname = view.stacking_hands && view.stacking_hands[p] && view.stacking_hands[p][slot];
             if (cname) {
-              const im = slotImgs[pIdx][slot];
-              const sr = slotRects[pIdx][slot] || pileRects[pIdx];
               const sDelay = stackStartOffset + sIdx * stackStepMs;
               dealReveal.slotsAt[p + "|" + slot] = dealBaseAt + streamStartMs + sDelay + stackDur;
-              flyCard(pileRects[pIdx], sr, cname, { flip: true, delay: sDelay, duration: stackDur, hideEl: im });
+              setTimeout(() => {
+                flyCard(getPileRect(p), getSlotRect(p, slot), cname, { flip: true, delay: 0, duration: stackDur, hideEl: getSlotImg(p, slot) });
+              }, sDelay);
               setTimeout(() => playSfx("stack"), sDelay + stackDur);
               sIdx++;
             }
@@ -2360,18 +2359,19 @@ function runMultiDealAnimation(view) {
     stage.remove();
     for (let i = 0; i < pileThrows; i++) {
       const pIdx = i % dealPlayers.length;
+      const p = dealPlayers[pIdx];
       const d = i * pileDelayStep;
       const isFirstForPlayer = i < dealPlayers.length;
       if (isFirstForPlayer) {
-        dealReveal.pilesAt[dealPlayers[pIdx]] = dealBaseAt + dealStartMs + d + cardDur;
+        dealReveal.pilesAt[p] = dealBaseAt + dealStartMs + d + cardDur;
       }
-      flyCard(fromR, pileRects[pIdx], "card_back", {
-        delay: d,
-        duration: cardDur,
-        hideEl: isFirstForPlayer ? pileImgs[pIdx] : null,
-        hideAlso: isFirstForPlayer ? pileBadges[pIdx] : null,
-      });
       setTimeout(() => {
+        flyCard(fromR, getPileRect(p), "card_back", {
+          delay: 0,
+          duration: cardDur,
+          hideEl: isFirstForPlayer ? getPileImg(p) : null,
+          hideAlso: isFirstForPlayer ? getPileBadge(p) : null,
+        });
         playSfx("stack");
         if (i % Math.max(1, dealPlayers.length) === 0) vibrate(10);
       }, d);
@@ -2381,13 +2381,13 @@ function runMultiDealAnimation(view) {
     for (let slot = 0; slot < maxSlots; slot++) {
       for (let pIdx = 0; pIdx < dealPlayers.length; pIdx++) {
         const p = dealPlayers[pIdx];
-        const im = slotImgs[pIdx][slot];
-        const sr = slotRects[pIdx][slot] || pileRects[pIdx];
         const cname = view.stacking_hands && view.stacking_hands[p] && view.stacking_hands[p][slot];
         if (cname) {
           const sDelay = stackDelayBase + sIdx * stackDelayStep;
           dealReveal.slotsAt[p + "|" + slot] = dealBaseAt + dealStartMs + sDelay + stackDur;
-          flyCard(pileRects[pIdx], sr, cname, { flip: true, delay: sDelay, duration: stackDur, hideEl: im });
+          setTimeout(() => {
+            flyCard(getPileRect(p), getSlotRect(p, slot), cname, { flip: true, delay: 0, duration: stackDur, hideEl: getSlotImg(p, slot) });
+          }, sDelay);
           setTimeout(() => playSfx("stack"), sDelay + stackDur);
           sIdx++;
         }
@@ -2453,6 +2453,15 @@ function renderActions(view, oldView) {
   $("leaderboard").hidden = true;
   lbShownFor = null;
   stopEndScreenSfx();
+  if (view.last_drop && view.last_drop.seq > lastDropSeq) {
+    lastDropSeq = view.last_drop.seq;
+    const d = view.last_drop;
+    const cardTxt = d.cards > 0
+      ? `their ${d.cards} card${d.cards === 1 ? "" : "s"} went to the bottom of the middle stack`
+      : "they had no cards left";
+    pushStackMsg(`${d.player} was kicked for inactivity — ${cardTxt}`, "miss");
+    showError(`${d.player} disconnected for too long and was removed — ${cardTxt}.`, true);
+  }
   const updateDecisionTimer = (key, label, rawLeft) => {
     const jt = $("joker-timer");
     if (!jt) return;
@@ -2470,7 +2479,7 @@ function renderActions(view, oldView) {
       jt.dataset.timerKey = key;
       jt.dataset.lastTick = "";
       const elapsed = Math.max(0, total - left);
-      jt.innerHTML = `<div class="joker-timer-clock"><img class="timer-ico" src="/assets/ico_stopwatch.png" alt=""><div class="joker-timer-sweep" style="--jt-dur:${total}s;--jt-delay:-${elapsed.toFixed(3)}s"></div></div><span class="joker-timer-lbl"></span>`;
+      jt.innerHTML = `<div class="joker-timer-clock" style="--jt-dur:${total}s;--jt-delay:-${elapsed.toFixed(3)}s"></div><span class="joker-timer-lbl"></span>`;
     }
     if (jt.dataset.lastTick !== String(secs) && secs > 0) {
       jt.dataset.lastTick = String(secs);
@@ -2502,6 +2511,8 @@ function renderActions(view, oldView) {
   }
   if (view.phase === "joker_choose" && view.joker && view.joker.seconds_left != null) {
     updateDecisionTimer("joker|" + view.joker.winner + "|" + view.middle_count, "Choose", view.joker.seconds_left);
+  } else if (view.phase === "open" && view.standstill && view.standstill.seconds_left != null) {
+    updateDecisionTimer("standstill|" + view.middle_count, "No moves", view.standstill.seconds_left);
   } else {
     updateDecisionTimer(null, "", null);
   }
@@ -2520,6 +2531,10 @@ function renderActions(view, oldView) {
     } else {
       info.textContent = `${j.winner} slapped first and is choosing who gets the stack…`;
     }
+    return;
+  }
+  if (view.phase === "open" && view.standstill && view.standstill.seconds_left != null) {
+    info.textContent = `No legal moves left! Everyone still holding cards loses in ${Math.ceil(view.standstill.seconds_left)}s…`;
     return;
   }
   if (view.awaiting_deal) {
@@ -2958,8 +2973,35 @@ if ($("home-multiplayer")) $("home-multiplayer").addEventListener("click", () =>
 if ($("home-practice")) $("home-practice").addEventListener("click", () => showHomeSubpage("practice"));
 if ($("mp-back")) $("mp-back").addEventListener("click", () => showHomeSubpage("menu"));
 if ($("practice-back")) $("practice-back").addEventListener("click", () => showHomeSubpage("menu"));
-if ($("mp-join-tab")) $("mp-join-tab").addEventListener("click", () => setMpTab("join"));
-if ($("mp-create-tab")) $("mp-create-tab").addEventListener("click", () => setMpTab("create"));
+if ($("mp-join-tab")) $("mp-join-tab").addEventListener("click", () => {
+  setMpTab("join");
+  setTimeout(() => { if ($("room")) $("room").focus(); }, 0);
+});
+if ($("mp-create-tab")) $("mp-create-tab").addEventListener("click", () => {
+  setMpTab("create");
+  setTimeout(() => { if ($("create-room")) $("create-room").focus(); }, 0);
+});
+if ($("name")) $("name").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    if ($("mp-join-tab")) $("mp-join-tab").focus();
+  }
+});
+if ($("room")) $("room").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    if ($("join")) $("join").click();
+  }
+});
+["create-public", "create-private"].forEach((id) => {
+  const el = $(id);
+  if (el) el.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if ($("create-room")) $("create-room").focus();
+    }
+  });
+});
 if ($("refresh-rooms")) $("refresh-rooms").addEventListener("click", loadPublicRooms);
 if ($("regen-room-code")) $("regen-room-code").addEventListener("click", () => {
   const cur = $("create-room-code") ? $("create-room-code").textContent : "";
@@ -3044,11 +3086,14 @@ if ($("fast-bots-btn")) $("fast-bots-btn").addEventListener("click", () => {
 
 // ------------------------------------------------------------- leaderboard
 let lbShownFor = null;
-let endSfxActive = false, endFireAudio = null, endLavaTimer = null, endLavaRumble = null;
+let lastDropSeq = 0;
+let endSfxActive = false, endFireAudio = null, endLavaTimer = null, endLavaRumble = null, endFireworksTimer = null;
 function stopEndScreenSfx() {
   endSfxActive = false;
   clearTimeout(endLavaTimer);
   endLavaTimer = null;
+  clearInterval(endFireworksTimer);
+  endFireworksTimer = null;
   if (endLavaRumble) {
     try { endLavaRumble.src.stop(); } catch (e) { /* ignore */ }
     try { endLavaRumble.gain.disconnect(); } catch (e) { /* ignore */ }
@@ -3057,6 +3102,22 @@ function stopEndScreenSfx() {
   if (endFireAudio) {
     try { endFireAudio.pause(); endFireAudio.currentTime = 0; } catch (e) { /* ignore */ }
   }
+}
+function launchStandingsFireworks() {
+  const lb = $("leaderboard");
+  const podium = $("lb-podium");
+  if (!lb || lb.hidden || !podium || document.hidden) return;
+  const r = podium.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  const colors = ["#ffcf4a", "#ff5a7a", "#3ddc97", "#ff9f43", "#6ecbff"];
+  const c = colors[Math.floor(Math.random() * colors.length)];
+  const fxRect = {
+    x: r.left + r.width * (0.18 + Math.random() * 0.64) - 20,
+    y: r.top + r.height * (0.14 + Math.random() * 0.36) - 20,
+    w: 40,
+    h: 40,
+  };
+  fireworks(fxRect, c, 2);
 }
 function playLavaBubbleSfx() {
   if (!endSfxActive || !sfxOn || sfxVol <= 0) return;
@@ -3187,9 +3248,14 @@ function showLeaderboard(view) {
     ...(view.ranking || []).map((p, i) => ({ player: p, rank: i + 1, loser: false })),
     ...(view.losers || []).map((p) => ({ player: p, rank: null, loser: true })),
   ];
+  const prevRosterNames = rankedAll.map((r) => r.player);
+  const nextRosterNames = Array.isArray(view.all_players) ? view.all_players : prevRosterNames;
+  const allDisplayPlayers = [...new Set([...allPlayers, ...nextRosterNames])];
   rankedAll.forEach(({ player: p, rank, loser }) => {
+    const removedNext = !nextRosterNames.includes(p);
     const li = document.createElement("li");
-    if (p === myName) li.className = "you";
+    if (p === myName) li.classList.add("you");
+    if (removedNext) li.classList.add("removed-next");
     const badge = document.createElement("span");
     badge.className = "lb-rank-badge";
     const bm = document.createElement("img");
@@ -3199,7 +3265,7 @@ function showLeaderboard(view) {
     badge.append(bm, loser ? " Pit" : ` #${rank}`);
     const tk = document.createElement("img");
     tk.className = "lb-row-tiki";
-    tk.src = tikiSrc(p, allPlayers);
+    tk.src = tikiSrc(p, allDisplayPlayers);
     tk.alt = p;
     const infoWrap = document.createElement("div");
     infoWrap.className = "lb-row-info";
@@ -3224,10 +3290,53 @@ function showLeaderboard(view) {
       const stackLeft = (view.stacking_hands && view.stacking_hands[p]) ? view.stacking_hands[p].filter(Boolean).length : 0;
       addStat(`Cards left: ${playLeft + stackLeft}`, "cards");
     }
+    if (removedNext) {
+      addStat("Removed for next game", "removed");
+    }
     infoWrap.append(nm, statsLine);
     const st = document.createElement("span");
-    st.className = "lb-row-status" + (loser ? " loser" : "");
-    st.textContent = loser ? "In Lava" : (rank === 1 ? "Winner" : `Finished #${rank}`);
+    st.className = "lb-row-status" + (removedNext ? " removed" : (loser ? " loser" : ""));
+    st.textContent = removedNext ? "Removed" : (loser ? "In Lava" : (rank === 1 ? "Winner" : `Finished #${rank}`));
+    li.append(badge, tk, infoWrap, st);
+    list.append(li);
+  });
+  nextRosterNames.filter((p) => !prevRosterNames.includes(p)).forEach((p) => {
+    const li = document.createElement("li");
+    li.className = "added-next" + (p === myName ? " you" : "");
+    const badge = document.createElement("span");
+    badge.className = "lb-rank-badge";
+    const bm = document.createElement("img");
+    bm.className = "inline-ico";
+    bm.src = "/assets/ico_star.png";
+    bm.alt = "";
+    badge.append(bm, " New");
+    const tk = document.createElement("img");
+    tk.className = "lb-row-tiki";
+    tk.src = tikiSrc(p, allDisplayPlayers);
+    tk.alt = p;
+    const infoWrap = document.createElement("div");
+    infoWrap.className = "lb-row-info";
+    const nm = document.createElement("span");
+    nm.className = "lb-row-name";
+    nm.textContent = `${p}${p === myName ? " (you)" : ""}`;
+    const ps = statsMap[p] || { losses: 0, p1: 0, p2: 0, p3: 0 };
+    const statsLine = document.createElement("span");
+    statsLine.className = "lb-row-stats";
+    const addStat = (label, cls) => {
+      const sp = document.createElement("span");
+      sp.className = "lb-stat-pill " + cls;
+      sp.textContent = label;
+      statsLine.append(sp);
+    };
+    addStat(`1st: ${ps.p1 || 0}`, "gold");
+    if (pedSlots >= 2) addStat(`2nd: ${ps.p2 || 0}`, "silver");
+    if (pedSlots >= 3) addStat(`3rd: ${ps.p3 || 0}`, "bronze");
+    addStat(`Losses: ${ps.losses || 0}`, "loss");
+    addStat("Added for next game", "added");
+    infoWrap.append(nm, statsLine);
+    const st = document.createElement("span");
+    st.className = "lb-row-status added";
+    st.textContent = "Added";
     li.append(badge, tk, infoWrap, st);
     list.append(li);
   });
@@ -3328,6 +3437,9 @@ function showLeaderboard(view) {
     $("board-peek").hidden = true;
     $("leaderboard").hidden = false;
     startEndScreenSfx();
+    requestAnimationFrame(() => launchStandingsFireworks());
+    clearInterval(endFireworksTimer);
+    endFireworksTimer = setInterval(launchStandingsFireworks, 2800);
   }
 }
 if ($("lb-add-bot")) $("lb-add-bot").addEventListener("click", () => send({ type: "add_bot" }));
@@ -3710,7 +3822,17 @@ function trimAudioBuffer(ctx, buffer) {
   const end = Math.min(buffer.length, i1 + Math.round(sr * 0.035));
   const len = Math.max(1, end - start);
   const out = ctx.createBuffer(chCount, len, sr);
-  const norm = maxPeak < 0.85 ? Math.min(3.5, 0.9 / maxPeak) : 1;
+  // RMS loudness normalization so all sound effects sit in a comfortable, balanced range
+  let sumSq = 0;
+  for (let ch = 0; ch < chCount; ch++) {
+    const src = buffer.getChannelData(ch);
+    for (let i = 0; i < len; i++) { const s = src[start + i]; sumSq += s * s; }
+  }
+  const rms = Math.sqrt(sumSq / Math.max(1, len * chCount));
+  const targetRms = 0.16;
+  const normRms = rms > 0.004 ? Math.min(3.0, targetRms / rms) : 1;
+  const normPeak = maxPeak > 0.001 ? (0.72 / maxPeak) : 1;
+  const norm = Math.min(normRms, normPeak);
   const fadeIn = Math.min(Math.floor(len * 0.25), Math.round(sr * 0.005));
   const fadeOut = Math.min(Math.floor(len * 0.35), Math.round(sr * 0.015));
   for (let ch = 0; ch < chCount; ch++) {
@@ -3759,7 +3881,7 @@ function playPickupSfx() {
       src.buffer = sfxBuffers.riffle;
       src.playbackRate.value = 1.35;
       const gain = sfxCtx.createGain();
-      gain.gain.value = Math.max(0, Math.min(1, sfxVol * 0.65));
+      gain.gain.value = Math.max(0, Math.min(1, sfxVol * 0.45));
       src.connect(gain).connect(sfxCtx.destination);
       src.start(0);
       return;
@@ -3796,7 +3918,7 @@ function playThudSfx(volScale = 1, baseHz = 130.81) {
     osc.frequency.setValueAtTime(baseHz * 1.65, t);
     osc.frequency.exponentialRampToValueAtTime(baseHz, t + 0.024);
     gain.gain.setValueAtTime(0.001, t);
-    gain.gain.linearRampToValueAtTime(Math.max(0.01, sfxVol * 0.42 * volScale), t + 0.005);
+    gain.gain.linearRampToValueAtTime(Math.max(0.01, sfxVol * 0.34 * volScale), t + 0.005);
     gain.gain.exponentialRampToValueAtTime(0.0005, t + 0.19);
     osc.connect(gain).connect(sfxCtx.destination);
     osc.start(t);
@@ -3854,7 +3976,7 @@ function playBigFreakyThud() {
     sub.frequency.setValueAtTime(196.00, t);
     sub.frequency.exponentialRampToValueAtTime(98.00, t + 0.045);
     subG.gain.setValueAtTime(0.001, t);
-    subG.gain.linearRampToValueAtTime(Math.max(0.02, sfxVol * 0.68), t + 0.006);
+    subG.gain.linearRampToValueAtTime(Math.max(0.015, sfxVol * 0.40), t + 0.006);
     subG.gain.exponentialRampToValueAtTime(0.0005, t + 0.30);
     sub.connect(subG).connect(sfxCtx.destination);
     sub.start(t);
@@ -3866,7 +3988,7 @@ function playBigFreakyThud() {
     body.frequency.setValueAtTime(196.00 * 1.65, t);
     body.frequency.exponentialRampToValueAtTime(196.00, t + 0.028);
     bodyG.gain.setValueAtTime(0.001, t);
-    bodyG.gain.linearRampToValueAtTime(Math.max(0.015, sfxVol * 0.56), t + 0.005);
+    bodyG.gain.linearRampToValueAtTime(Math.max(0.012, sfxVol * 0.34), t + 0.005);
     bodyG.gain.exponentialRampToValueAtTime(0.0005, t + 0.26);
     body.connect(bodyG).connect(sfxCtx.destination);
     body.start(t);
@@ -3882,7 +4004,7 @@ function playBigFreakyThud() {
     lp.type = "lowpass";
     lp.frequency.value = 520;
     const nGain = sfxCtx.createGain();
-    nGain.gain.value = sfxVol * 0.35;
+    nGain.gain.value = sfxVol * 0.22;
     nSrc.connect(lp).connect(nGain).connect(sfxCtx.destination);
     nSrc.start(t);
   } catch (e) { /* audio unsupported */ }
@@ -3929,7 +4051,7 @@ function playJokerLaughSfx() {
       bp.Q.value = 3.2;
       const g = sfxCtx.createGain();
       g.gain.setValueAtTime(0.001, start);
-      g.gain.linearRampToValueAtTime(Math.max(0.02, sfxVol * (0.48 - i * 0.04)), start + 0.01);
+      g.gain.linearRampToValueAtTime(Math.max(0.015, sfxVol * (0.32 - i * 0.025)), start + 0.01);
       g.gain.exponentialRampToValueAtTime(0.0005, start + dur);
       bp.connect(g).connect(sfxCtx.destination);
       [hz, hz * 1.015].forEach((f) => {
@@ -3961,7 +4083,7 @@ function playSlapHitSfx(isFinal = false, progress = 0) {
       boom.frequency.setValueAtTime(160, t);
       boom.frequency.exponentialRampToValueAtTime(22, t + 0.55);
       boomG.gain.setValueAtTime(0.001, t);
-      boomG.gain.linearRampToValueAtTime(Math.max(0.04, sfxVol * 1.0), t + 0.008);
+      boomG.gain.linearRampToValueAtTime(Math.max(0.02, sfxVol * 0.44), t + 0.008);
       boomG.gain.exponentialRampToValueAtTime(0.0005, t + 0.58);
       boom.connect(boomG).connect(sfxCtx.destination);
       boom.start(t);
@@ -3983,7 +4105,7 @@ function playSlapHitSfx(isFinal = false, progress = 0) {
       expLp.frequency.setValueAtTime(3600, t);
       expLp.frequency.exponentialRampToValueAtTime(160, t + expDur);
       const expG = sfxCtx.createGain();
-      expG.gain.setValueAtTime(Math.max(0.03, sfxVol * 0.95), t);
+      expG.gain.setValueAtTime(Math.max(0.018, sfxVol * 0.38), t);
       expG.gain.exponentialRampToValueAtTime(0.0005, t + expDur);
       expSrc.connect(expLp).connect(expG).connect(sfxCtx.destination);
       expSrc.start(t);
@@ -3994,7 +4116,7 @@ function playSlapHitSfx(isFinal = false, progress = 0) {
       crk.frequency.setValueAtTime(130, t);
       crk.frequency.exponentialRampToValueAtTime(28, t + 0.36);
       crkG.gain.setValueAtTime(0.001, t);
-      crkG.gain.linearRampToValueAtTime(Math.max(0.02, sfxVol * 0.42), t + 0.006);
+      crkG.gain.linearRampToValueAtTime(Math.max(0.012, sfxVol * 0.20), t + 0.006);
       crkG.gain.exponentialRampToValueAtTime(0.0005, t + 0.38);
       crk.connect(crkG).connect(sfxCtx.destination);
       crk.start(t);
@@ -4007,7 +4129,7 @@ function playSlapHitSfx(isFinal = false, progress = 0) {
       src.buffer = sfxBuffers.slap;
       src.playbackRate.value = 1.02 - progress * 0.08;
       const g = sfxCtx.createGain();
-      g.gain.value = Math.max(0, Math.min(1, sfxVol * (0.78 + progress * 0.14)));
+      g.gain.value = Math.max(0, Math.min(1, sfxVol * (0.44 + progress * 0.08)));
       src.connect(g).connect(sfxCtx.destination);
       src.start(t);
     }
@@ -4018,7 +4140,7 @@ function playSlapHitSfx(isFinal = false, progress = 0) {
     sub.frequency.setValueAtTime(155, t);
     sub.frequency.exponentialRampToValueAtTime(34, t + 0.17);
     subG.gain.setValueAtTime(0.001, t);
-    subG.gain.linearRampToValueAtTime(Math.max(0.02, sfxVol * (0.58 + progress * 0.16)), t + 0.005);
+    subG.gain.linearRampToValueAtTime(Math.max(0.015, sfxVol * (0.34 + progress * 0.08)), t + 0.005);
     subG.gain.exponentialRampToValueAtTime(0.0005, t + 0.18);
     sub.connect(subG).connect(sfxCtx.destination);
     sub.start(t);
@@ -4114,11 +4236,15 @@ function stopSfx(name) {
     if (cur.el) { cur.el.pause(); cur.el.currentTime = 0; }
   } catch (e) { /* already stopped */ }
 }
+const SFX_GAIN = {
+  flip: 0.48, stack: 0.48, shed: 0.46, tiki_tap: 0.44,
+  joker: 0.44, miss: 0.48, freaky: 0.45, win: 0.46, firework: 0.36, slap: 0.46,
+};
 function playSfx(name) {
   if (document.hidden || !sfxOn) return;
   preloadSfx();
   if (name === "freaky") stopSfx("freaky");
-  const vol = Math.max(0, Math.min(1, sfxVol * (name === "miss" ? 0.85 : 0.65)));
+  const vol = Math.max(0, Math.min(1, sfxVol * (SFX_GAIN[name] || 0.46)));
   try {
     if (name === "miss" && sfxCtx) {
       if (sfxCtx.state === "suspended") sfxCtx.resume().catch(() => {});
@@ -4129,7 +4255,7 @@ function playSfx(name) {
       punch.frequency.setValueAtTime(145, t);
       punch.frequency.exponentialRampToValueAtTime(45, t + 0.12);
       punchG.gain.setValueAtTime(0.001, t);
-      punchG.gain.linearRampToValueAtTime(Math.max(0.015, sfxVol * 0.45), t + 0.005);
+      punchG.gain.linearRampToValueAtTime(Math.max(0.012, sfxVol * 0.30), t + 0.005);
       punchG.gain.exponentialRampToValueAtTime(0.0005, t + 0.13);
       punch.connect(punchG).connect(sfxCtx.destination);
       punch.start(t);
@@ -4901,7 +5027,7 @@ window.addEventListener("keydown", (ev) => {
     }
     return;
   }
-  if ((key === "p" || key === "d") && canLift) {
+  if (key === "d" && canLift) {
     ev.preventDefault();
     const target = { kind: "play" };
     if (doubleTapEnabled()) {
@@ -5283,6 +5409,13 @@ function pBotMove(g, bot, st) {
   }
   if (g.phase === "stacker_start" && g.stackers.includes(bot) && g.playing[bot].length) return { type: "play" };
   if (g.phase === "open" && g.turn !== null && g.players[g.turn] === bot && g.playing[bot].length) return { type: "play" };
+  if (P_STACK_PHASES.includes(g.phase) && (!g.middle.length || !pIsJoker(g.middle[g.middle.length - 1]))) {
+    const ownJ = (g.stacking[bot] || []).findIndex((c) => c && pIsJoker(c));
+    const noPlayingLeft = g.players.every((p) => g.finished.includes(p) || !g.playing[p].length);
+    if (ownJ >= 0 && (noPlayingLeft || !g.playing[bot].length || g.middle.length >= 3 || g.total(bot) <= 3)) {
+      return { type: "stack", owner: bot, slot: ownJ };
+    }
+  }
   return null;
 }
 function pFingerprint(g) {
@@ -5737,13 +5870,13 @@ $("tut-goal-box").addEventListener("click", () => {
   const t = practice.tut, step = TUT_STEPS[t.step];
   if (t.phase !== "goal") return;
   if (t.retry) { loadTutStep(t.step); practice.tut.phase = "goal"; $("tut-intro-box").hidden = true; practiceRender(); return; }
-  if (t.step === 6 && t.stage === 0) {
+  if (t.step === 7 && t.stage === 0) {
     t.stage = 1;
     try { practice.game.applyMove(P_BOTS[0], { type: "play" }, pnow()); } catch (e) {}
     practiceRender();
     return;
   }
-  if (t.step === 7 && t.stage === 0) {
+  if (t.step === 8 && t.stage === 0) {
     t.stage = 1;
     try { practice.game.applyMove(P_BOTS[1], { type: "play" }, pnow()); } catch (e) {}
     practiceRender();
@@ -5980,21 +6113,24 @@ const TUT_STEPS = [
   { title: "Welcome to Freaky Tiki", build: (me) => tutBuildCustom("deck_intro", me), info: true,
     html: "The <b>54-card deck</b> (52 standard cards + 2 Jokers) starts in the middle. It gets shuffled and dealt evenly into each player's blind <b>Playing pile</b>, with 2 cards flipped face up as their <b>Stacking hand</b> (1 in games of 5+).",
     goal: "click the pile to shuffle & deal" },
+  { title: "Goal of the game", build: (me) => tutBuildCustom("welcome", me), info: true,
+    html: "Your goal is to be the <b>first player to lose all of your cards</b> (both your Playing pile and your Stacking hand). The game keeps going until only <b>2 players</b> still have cards (or <b>3 players</b> in 6+ player games) — those remaining players are the losers!",
+    goal: "Click here to continue" },
   { title: "Taking turns", build: (me) => pBuild("turns", me),
-    html: "On your turn, flip from your <b>Playing pile</b> onto the middle. Play passes clockwise, and playing out of turn is not allowed.<br><b>Keybind:</b> Hold <kbd>P</kbd> to lift your top card, then press <kbd>SPACE</kbd> to play it.",
-    goal: "Drag your pile to the middle — or hold P and press SPACE" },
+    html: "On your turn, flip from your <b>Playing pile</b> onto the middle. Play passes clockwise, and playing out of turn is not allowed.<br><b>Keybind:</b> Hold <kbd>D</kbd> to lift your top card, then press <kbd>SPACE</kbd> to play it.",
+    goal: "Drag your pile to the middle — or hold D and press SPACE" },
   { title: "Stacking", build: (me) => tutBuildCustom("stack", me),
-    html: "Between turns, anyone can stack a face-up card within <b>±1 rank</b> of the middle card (Ace wraps to King).<br><b>Keybind:</b> Keys <kbd>1</kbd>–<kbd>8</kbd> match the numbered stacking slots (<kbd>1</kbd>–<kbd>2</kbd> are yours). Hold a number key and press <kbd>SPACE</kbd> to stack.",
-    goal: "Drag the glowing card to the middle — or hold its number (1 or 2) and press SPACE" },
+    html: "Between turns, anyone can stack a face-up card within <b>±1 rank</b> of the middle card (Ace wraps to King).",
+    goal: "Drag the glowing card to the middle" },
   { title: "Stacking mistakes", build: (me) => tutBuildCustom("miss", me),
     html: "Stacking a card too far from the middle card makes you pick up the whole stack. Your glowing card doesn't fit the <b>7</b>.",
     goal: "Try stacking the glowing card to see the penalty" },
   { title: "Stacking other players' cards", build: (me) => tutBuildCustom("stack_other", me),
-    html: "You can also stack <b>another player's</b> face-up card within <b>±1 rank</b>. Their empty slot refills from <b>your</b> playing pile!<br><b>Keybind:</b> Hold that slot's number key (<kbd>1</kbd>–<kbd>8</kbd>) and press <kbd>SPACE</kbd>.",
-    goal: "Drag Bot Mia's glowing card to the middle — or hold its number key and press SPACE" },
+    html: "You can also stack <b>another player's</b> face-up card within <b>±1 rank</b>. Their empty slot refills from <b>your</b> playing pile!",
+    goal: "Drag Bot Mia's glowing card to the middle" },
   { title: "Freaky Tiki - calling it", build: (me) => pBuild("freaky", me),
     html: "When your flipped card lands within <b>±1 rank</b> of the card underneath, the tiki pops up. Call it fast before others shed cards onto you!<br><b>Keybind:</b> Press <kbd>F</kbd> 3 times to call Freaky Tiki.",
-    goal: "Flip your top card (drag or P + SPACE), then click the Tiki or press F 3 times" },
+    goal: "Flip your top card (drag or D + SPACE), then click the Tiki or press F 3 times" },
   { title: "Freaky Tiki - shedding", build: (me) => tutBuildCustom("shed", me),
     html: "Now Bot Mia is about to match. While she calls Freaky Tiki, every card you shed goes onto <b>her</b> pile!<br><b>Keybind:</b> Press <kbd>S</kbd> to shed quickly.",
     goal: "Click your dotted box (or press S) to shed" },
@@ -6002,13 +6138,13 @@ const TUT_STEPS = [
     html: "A Joker pauses the game: everyone races to slap (<b>2 presses</b>). The winner gives the middle stack to anyone.<br><b>Keybind:</b> Mash <kbd>SPACE</kbd> to slap.",
     goal: "When Bot Leo flips the Joker, spam click the middle or mash SPACE twice" },
   { title: "Jokers in your stacking hand", build: (me) => tutBuildCustom("stack_joker", me),
-    html: "You can also play a <b>Joker from your own stacking hand</b> at any time! When you do, <b>you</b> must slap <b>5 times</b> instead of 2 to win.<br><b>Keybind:</b> Hold <kbd>1</kbd> + <kbd>SPACE</kbd> to play it, then mash <kbd>SPACE</kbd> 5 times.",
-    goal: "Play your glowing Joker (drag or 1 + SPACE), then slap it 5 times!" },
+    html: "You can also play a <b>Joker from your own stacking hand</b> at any time! When you do, <b>you</b> must slap <b>5 times</b> instead of 2 to win.",
+    goal: "Drag your glowing Joker to the middle, then slap it 5 times!" },
   { title: "Winning", build: (me) => tutBuildCustom("win", me),
     html: "You finish as soon as both your pile and stacking hand are empty. The game ends when only 2 players remain (3 in 6+ player games).",
     goal: "Stack your last glowing 8 onto the 7 to finish!" },
   { title: "You're ready", build: (me) => tutBuildCustom("welcome", me), info: true,
-    html: "You've practiced every rule! <b>Quick keys:</b> <kbd>P</kbd> play, <kbd>1</kbd>–<kbd>8</kbd> stack, <kbd>SPACE</kbd> drop/slap, <kbd>F</kbd> Freaky Tiki, <kbd>S</kbd> shed, <kbd>`</kbd> settings, <kbd>N</kbd>/<kbd>M</kbd> sound/music.",
+    html: "You've practiced every rule! <b>Quick keys:</b> <kbd>D</kbd> lift playing card, <kbd>SPACE</kbd> drop/slap, <kbd>F</kbd> Freaky Tiki, <kbd>S</kbd> shed, <kbd>`</kbd> settings, <kbd>N</kbd>/<kbd>M</kbd> sound/music.",
     goal: "Click here or Finish when you're ready to play" },
 ];
 function startTutorial() {
@@ -6033,9 +6169,9 @@ function loadTutStep(i) {
   cleanupGiveawayDrag();
   clearStackMsgs();
   const built = TUT_STEPS[i].build(myName);
-  if (i === 1 || i === 2) {
+  if (i === 2 || i === 3) {
     built.game.turn = 0;
-    if (i === 2) built.info.passive = true;
+    if (i === 3) built.info.passive = true;
   }
   practice = Object.assign({ kind: "tutorial", grabs: {}, done: false, timer: null, resetTimer: null,
     stats: { plays: 0, called: false, t0: 0 },
@@ -6151,7 +6287,7 @@ function renderPracticeGoalBox(v) {
       const isMyTurn = (v.phase === "open" && v.turn_player === myName)
         || (v.phase === "stacker_start" && (v.stackers || []).includes(myName));
       tag = isMyTurn ? "Your move" : "Wait";
-      text = isMyTurn ? "Hold your pile (or P), then drop on the middle"
+      text = isMyTurn ? "Hold your pile (or D), then drop on the middle"
         : (v.turn_player ? `Wait for ${v.turn_player}'s turn…` : "Wait for the next turn…");
     } else if (pr.kind === "stack") {
       if (v.phase === "joker_choose" && v.joker && v.joker.winner !== myName) {
@@ -6176,7 +6312,7 @@ function renderPracticeGoalBox(v) {
           ? "Click the Tiki 3 times (or press F)!"
           : "Click your dotted box (or press S) to shed!";
       } else if (v.turn_player === myName) {
-        text = "Hold your pile (or P) and drop it on the middle";
+        text = "Hold your pile (or D) and drop it on the middle";
       } else {
         tag = "Wait";
         text = `Wait for ${v.turn_player || "the next"}'s turn…`;
@@ -6225,22 +6361,22 @@ function renderTutGoalBox(target) {
     box.className = "tut-goal-box done clickable";
     box.innerHTML = `<span class="coach-goal-tag done">Done!</span><span>${t.doneMsg}</span><span class="tut-goal-cta">${last ? "Click to finish →" : "Click to continue →"}</span>`;
     box.hidden = false;
-  } else if (t.step === 6 && t.stage === 0) {
+  } else if (t.step === 7 && t.stage === 0) {
     box.className = "tut-goal-box clickable";
     box.innerHTML = `<span class="coach-goal-tag">Ready?</span><span>Click here when you're ready for Mia to flip her matching card!</span>`;
     box.hidden = false;
-  } else if (t.step === 7 && t.stage === 0) {
+  } else if (t.step === 8 && t.stage === 0) {
     box.className = "tut-goal-box clickable";
     box.innerHTML = `<span class="coach-goal-tag">Ready?</span><span>Click here when you're ready for Leo to flip the Joker!</span>`;
     box.hidden = false;
-  } else if (t.step === 6 && t.shed) {
+  } else if (t.step === 7 && t.shed) {
     box.className = "tut-goal-box";
     box.innerHTML = `<span class="coach-goal-tag">Watch</span><span>Shed! Mia collects all the cards you shed when she calls.</span>`;
     box.hidden = false;
   } else if (step.goal) {
     const clickable = (t.step === 0 && !t.dealt) || !!step.info;
     const v = practiceView();
-    const isWait = (t.step === 7 && t.stage === 1 && v.phase !== "joker" && !(v.phase === "joker_choose" && v.joker && v.joker.winner === myName))
+    const isWait = (t.step === 8 && t.stage === 1 && v.phase !== "joker" && !(v.phase === "joker_choose" && v.joker && v.joker.winner === myName))
       || (v.phase === "joker_choose" && v.joker && v.joker.winner !== myName);
     const tag = last ? "Ready" : isWait ? "Wait" : "Your move";
     box.className = "tut-goal-box" + (clickable ? " clickable" : "");
@@ -6279,7 +6415,7 @@ function tutNextLabel() {
 }
 function tutTick(pr, now) {
   const t = pr.tut, g = pr.game;
-  if (t.step !== 6) return false;
+  if (t.step !== 7) return false;
   if (t.stage === 1 && t.shed && now - t.shedAt > 2.2) {
     t.stage = 2;
     try { g.applyMove(P_BOTS[0], { type: "freaky" }, now); return true; } catch (e) { return false; }
@@ -6291,30 +6427,31 @@ function tutHighlightEl(v) {
   const mySeat = seatEl(me);
   switch (t.step) {
     case 0: return document.querySelector("#table-center .tut-deck-showcase") || (mySeat && mySeat.querySelector(".seat-cards"));
-    case 1: return mySeat && mySeat.querySelector(".pilewrap");
-    case 2: {
+    case 1: return null;
+    case 2: return mySeat && mySeat.querySelector(".pilewrap");
+    case 3: {
       const hands = (v.stacking_hands || {})[me] || [];
       const idx = hands.findIndex((c) => c && v.middle_top && pWithin(c, v.middle_top));
       return idx >= 0 ? slotWrapEl(me, idx) : mySeat && mySeat.querySelector(".seat-cards");
     }
-    case 3: return slotWrapEl(me, 0);
-    case 4: return slotWrapEl(P_BOTS[0], 0);
-    case 5: return v.phase === "freaky" ? $("tiki-box") : mySeat && mySeat.querySelector(".pilewrap");
-    case 6: {
+    case 4: return slotWrapEl(me, 0);
+    case 5: return slotWrapEl(P_BOTS[0], 0);
+    case 6: return v.phase === "freaky" ? $("tiki-box") : mySeat && mySeat.querySelector(".pilewrap");
+    case 7: {
       if (v.phase === "freaky") return document.querySelector("#shed-zone");
       const mia = seatEl(P_BOTS[0]);
       return mia && mia.querySelector(".pilewrap");
     }
-    case 7: {
+    case 8: {
       if (v.phase === "joker" || v.phase === "joker_choose")
         return document.querySelector("#table-center .middle-stack");
       const leo = seatEl(P_BOTS[1]);
       return leo && leo.querySelector(".pilewrap");
     }
-    case 8: return (v.phase === "joker" || v.phase === "joker_choose")
+    case 9: return (v.phase === "joker" || v.phase === "joker_choose")
       ? document.querySelector("#table-center .middle-stack")
       : slotWrapEl(me, 0);
-    case 9: return slotWrapEl(me, 0);
+    case 10: return slotWrapEl(me, 0);
     default: return null;
   }
 }
@@ -6335,22 +6472,22 @@ function tutAfterRender(old, v) {
     bigEvent("Done!", "freaky", 1150);
     tutNextLabel();
   };
-  if (t.step === 1 && old.middle_count < v.middle_count
+  if (t.step === 2 && old.middle_count < v.middle_count
       && v.your_playing_count < old.your_playing_count && old.phase === "open")
     doneTut("Played! The turn passed clockwise, just like that. On to stacking.");
-  if (t.step === 2 && v.phase === "stacked" && old.phase !== "stacked" && v.stackers.includes(me))
+  if (t.step === 3 && v.phase === "stacked" && old.phase !== "stacked" && v.stackers.includes(me))
     doneTut("Stacked! Your slot refills from your own pile - and only the players who stacked may start the next turn.");
-  if (t.step === 3 && v.middle_count === 0 && old.middle_count > 0 && gained > 0)
+  if (t.step === 4 && v.middle_count === 0 && old.middle_count > 0 && gained > 0)
     doneTut("The whole middle stack goes to the bottom of your pile. Since you made the mistake, you start the next turn.");
-  if (t.step === 4 && v.phase === "stacked" && old.phase !== "stacked" && v.stackers.includes(me))
+  if (t.step === 5 && v.phase === "stacked" && old.phase !== "stacked" && v.stackers.includes(me))
     doneTut("Nice! Mia's slot refills from your playing pile - you just shed a card onto her table spot!");
-  if (t.step === 5) {
+  if (t.step === 6) {
     if (old.phase === "freaky" && v.phase !== "freaky")
       doneTut(pr.stats.called
         ? "Called it! Everything the bots shed is yours, on top of your pile - and you start the next turn."
         : "It resolved by itself after 10 seconds - you still collect the sheds, but a faster call means fewer of them.");
   }
-  if (t.step === 6) {
+  if (t.step === 7) {
     if (v.phase === "freaky" && v.freaky && (v.freaky.shed_counts[me] || 0) > 0 && !t.shed) {
       t.shed = true; t.shedAt = pnow();
       tutGoalStatus("Watch", "Shed! Mia collects all the cards you shed when she calls.");
@@ -6360,11 +6497,11 @@ function tutAfterRender(old, v) {
       else t.retry = true;
     }
   }
-  if ((t.step === 7 || t.step === 8) && old.phase === "joker_choose" && v.phase !== "joker_choose")
+  if ((t.step === 8 || t.step === 9) && old.phase === "joker_choose" && v.phase !== "joker_choose")
     doneTut(v.turn_player === me
       ? "The stack came to you this time - the receiver always starts the next turn."
       : "The slap winner chose, the stack moved, and its new owner starts the next turn.");
-  if (t.step === 9 && (v.finished.includes(me) || (v.your_playing_count === 0 && (v.stacking_hands[me] || []).every((c) => !c))))
+  if (t.step === 10 && (v.finished.includes(me) || (v.your_playing_count === 0 && (v.stacking_hands[me] || []).every((c) => !c))))
     doneTut("Finished! Zero cards - that is how every Freaky Tiki ends for a winner.");
   renderTutGoalBox((t.done || t.retry) ? null : target);
 }

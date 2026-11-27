@@ -20,7 +20,7 @@ SUITS = ["spades", "hearts", "diamonds", "clubs"]
 RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
 RANK_VALUE = {r: i + 1 for i, r in enumerate(["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"])}
 
-PACE, GRACE, STACK_TURN_DELAY, FREAKY_TIMEOUT, JOKER_CHOOSE_TIMEOUT = 0.65, 0.85, 2.0, 10.0, 10.0
+PACE, GRACE, STACK_TURN_DELAY, FREAKY_TIMEOUT, JOKER_CHOOSE_TIMEOUT, STANDSTILL_TIMEOUT = 0.65, 0.85, 2.0, 10.0, 10.0, 10.0
 SLAP_PRESSES, SLAP_PRESSES_STACKING_PLACER = 2, 5
 
 @dataclass(frozen=True)
@@ -79,11 +79,14 @@ class GameState:
     joker_deadline: float | None = None
     last_joker_target: str | None = None
     joker_target_streak: int = 0
+    standstill_deadline: float | None = None
     fast_bots: bool = False
     last_miss: dict | None = None
     miss_seq: int = 0
     last_stack: dict | None = None
     stack_seq: int = 0
+    last_drop: dict | None = None
+    drop_seq: int = 0
     _rng: random.Random = field(default_factory=lambda: random.Random(0), repr=False)
 
     # ------------------------------------------------------------------ setup
@@ -245,13 +248,20 @@ class GameState:
         return True
 
     def drop_player(self, player: str, now: float = 0.0) -> bool:
-        """Drop a player from the game after disconnect timeout."""
+        """Drop a player from the game after disconnect timeout.
+        Their remaining cards are shuffled onto the bottom of the middle stack."""
         if player not in self.players or player in self.dropped or self.phase == "over":
             return False
         self.disconnected.discard(player)
         self.dropped.append(player)
+        dropped_cards = list(self.playing[player]) + [c for c in self.stacking[player] if c is not None]
         self.playing[player] = []
         self.stacking[player] = [None] * len(self.stacking[player])
+        if dropped_cards:
+            self._rng.shuffle(dropped_cards)
+            self.middle = dropped_cards + self.middle
+        self.drop_seq += 1
+        self.last_drop = {"seq": self.drop_seq, "player": player, "cards": len(dropped_cards)}
         self.pending.pop(player, None)
         for stacker in list(self.pending.keys()):
             batch = self.pending[stacker]
@@ -332,6 +342,9 @@ class GameState:
     def _joker_timeout(self) -> float:
         return 1.5 if self.fast_bots else JOKER_CHOOSE_TIMEOUT
 
+    def _standstill_timeout(self) -> float:
+        return 1.5 if self.fast_bots else STANDSTILL_TIMEOUT
+
     def _schedule_replacement(self, stacker: str, owner: str, slot: int, now: float) -> None:
         due = now + self._pace()
         batch = self.pending.setdefault(stacker, {"slots": [], "due": due})
@@ -390,14 +403,22 @@ class GameState:
             changed = True
         if self._fix_turn():
             changed = True
-        # R11 standstill: no legal move exists for anyone - game over,
-        # the players still holding cards are the losers.
+        # R11 standstill: when no legal move exists for anyone, start a
+        # countdown timer; when it expires, everyone still holding cards loses.
         if self.phase == "open" and self._is_standstill():
-            self._finalize_pending_finishes(actor=None)
-            if self.phase == "over":
-                return True
-            self.phase = "over"
-            self.losers = self.active_players()
+            if self.standstill_deadline is None:
+                self.standstill_deadline = now + self._standstill_timeout()
+                changed = True
+            elif now >= self.standstill_deadline:
+                self.standstill_deadline = None
+                self._finalize_pending_finishes(actor=None)
+                if self.phase == "over":
+                    return True
+                self.phase = "over"
+                self.losers = self.active_players()
+                changed = True
+        elif self.standstill_deadline is not None:
+            self.standstill_deadline = None
             changed = True
         return changed
 
@@ -681,11 +702,14 @@ class GameState:
             "dropped": list(self.dropped),
             "last_miss": dict(self.last_miss) if self.last_miss else None,
             "last_stack": dict(self.last_stack) if self.last_stack else None,
+            "last_drop": dict(self.last_drop) if self.last_drop else None,
             "pace_left": max(0.0, round(self._pace() - (now - self.last_placement_at), 3)) if self.last_placement_at is not None else 0.0,
             "pace_dur": self._pace(),
             "stack_delay_left": max(0.0, round(self._stack_delay() - (now - self.last_stack_at), 3)) if (self.phase == "stacked" and self.last_stack_at is not None) else 0.0,
             "stack_delay_dur": self._stack_delay(),
         }
+        if self.phase == "open" and self.standstill_deadline is not None:
+            view["standstill"] = {"seconds_left": max(0.0, round(self.standstill_deadline - now, 1))}
         if self.phase == "freaky":
             shed_counts: dict[str, int] = {}
             for p, _ in self.shed_pool:
