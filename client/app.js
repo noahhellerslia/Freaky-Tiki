@@ -661,8 +661,16 @@ function fxLayer() {
   if (!l) { l = document.createElement("div"); l.id = "fx"; document.body.append(l); }
   return l;
 }
+let globalAnimEpoch = 0;
+let scheduledPopOscs = [];
+function stopScheduledPopSfx() {
+  const list = scheduledPopOscs;
+  scheduledPopOscs = [];
+  list.forEach((osc) => { try { osc.stop(); osc.disconnect(); } catch (e) {} });
+}
 function flyCard(from, to, cardName, opts = {}) {
   if (!from || !to || reduceMotion) return;
+  const epoch = globalAnimEpoch;
   const spdScale = fastBotsAnim ? 0.28 : 1;
   const delay = Math.round((opts.delay || 0) * spdScale);
   const dur = Math.max(120, Math.round((opts.duration || (opts.spin ? 980 : 650)) * spdScale));
@@ -687,7 +695,7 @@ function flyCard(from, to, cardName, opts = {}) {
   wrap.style.transform = `rotate(${fromRot}deg)`;
   if (delay > 0) {
     wrap.style.visibility = "hidden";
-    setTimeout(() => { if (wrap.isConnected) wrap.style.visibility = ""; }, delay);
+    setTimeout(() => { if (epoch === globalAnimEpoch && wrap.isConnected) wrap.style.visibility = ""; }, delay);
   }
   fxLayer().append(wrap);
   const anim = wrap.animate([
@@ -701,11 +709,12 @@ function flyCard(from, to, cardName, opts = {}) {
       { transform: "scaleX(0)", opacity: midOp, offset: .5 },
       { transform: "scaleX(1)", opacity: 1 }
     ], { duration: dur, delay, easing: "ease-in-out" });
-    setTimeout(() => { img.src = cardSrc(cardName); }, delay + Math.round(dur * 0.5));
+    setTimeout(() => { if (epoch === globalAnimEpoch && img.isConnected) img.src = cardSrc(cardName); }, delay + Math.round(dur * 0.5));
   }
   anim.onfinish = () => wrap.remove();
   setTimeout(() => wrap.remove(), delay + dur + 350);
   if (opts.hideEl) setTimeout(() => {
+    if (epoch !== globalAnimEpoch) return;
     opts.hideEl.style.visibility = "";
     if (opts.hideEl.parentElement) {
       opts.hideEl.parentElement.classList.remove("empty-slot-box");
@@ -713,7 +722,7 @@ function flyCard(from, to, cardName, opts = {}) {
       if (kh) kh.style.visibility = "";
     }
   }, delay + dur + 10);
-  if (opts.hideAlso) setTimeout(() => { opts.hideAlso.style.visibility = ""; }, delay + dur + 10);
+  if (opts.hideAlso) setTimeout(() => { if (epoch === globalAnimEpoch) opts.hideAlso.style.visibility = ""; }, delay + dur + 10);
 }
 function flyStack(from, to, topCard, n, hideEl) {
   const k = Math.max(1, Math.min(n || 1, 5));
@@ -848,10 +857,12 @@ function particles(rect, count = 26, color = null) {
 }
 function fireworks(rect, color, bursts = 3, silent = false, container = null) {
   if (!rect || reduceMotion) return;
+  const epoch = globalAnimEpoch;
   const host = container || fxLayer();
   const cx = rect.x + rect.w / 2, cy = rect.y + rect.h / 2;
   for (let b = 0; b < bursts; b++) {
     setTimeout(() => {
+      if (epoch !== globalAnimEpoch) return;
       if (container && !container.isConnected) return;
       const ox = cx + (b === 0 ? 0 : (Math.random() * 44 - 22));
       const oy = cy + (b === 0 ? 0 : (Math.random() * 34 - 17));
@@ -895,6 +906,7 @@ function fireworks(rect, color, bursts = 3, silent = false, container = null) {
     }, b * 240);
   }
 }
+let screenShakeTimer = null;
 function screenShake(level = false) {
   if (reduceMotion) return;
   const a = $("arena");
@@ -905,7 +917,8 @@ function screenShake(level = false) {
   a.classList.remove("scenery-enter", "screen-shake", "screen-shake-light", "screen-shake-heavy");
   void a.offsetWidth;
   a.classList.add(cls);
-  setTimeout(() => a.classList.remove(cls), ms);
+  clearTimeout(screenShakeTimer);
+  screenShakeTimer = setTimeout(() => { a.classList.remove(cls); screenShakeTimer = null; }, ms);
 }
 
 // ------------------------------------------------------------ stack messages
@@ -1587,6 +1600,7 @@ function render(view, keepError) {
       if (arena && lobbyEl && !lobbyEl.hidden) {
         const ghost = lobbyEl.cloneNode(true);
         ghost.removeAttribute("id");
+        ghost.classList.add("lobby-exit-ghost");
         ghost.style.pointerEvents = "none";
         ghost.style.zIndex = "30";
         const gt = ghost.querySelector("#lobby-tikis");
@@ -2193,7 +2207,32 @@ function renderRing(view, canGo, lobbyTikiRects = null, gameJustStarted = false)
 let lastPhase = "open";
 let lbDelayTimer = null;
 let useCircularDeal = false;
+let dealAnimTimers = [];
+let dealAnimToken = 0;
+function clearMultiDealAnims() {
+  dealAnimToken++;
+  dealAnimTimers.forEach((id) => clearTimeout(id));
+  dealAnimTimers = [];
+  dealingUntil = 0;
+  playLockedUntil = 0;
+  dealReveal = { pilesAt: {}, slotsAt: {} };
+  document.querySelectorAll(".tut-shuffle-stage, .deal-ring-wrap, .pilewrap .pile-empty-slot").forEach((el) => el.remove());
+  document.querySelectorAll(".seat-pile, .pilewrap .pile-count, .pilewrap .key-hint, .backs .stack-wrap img").forEach((el) => {
+    el.style.visibility = "";
+  });
+}
 function runMultiDealAnimation(view) {
+  clearMultiDealAnims();
+  const token = dealAnimToken;
+  const epoch = globalAnimEpoch;
+  const schedDeal = (fn, ms) => {
+    const id = setTimeout(() => {
+      if (token !== dealAnimToken || epoch !== globalAnimEpoch) return;
+      fn();
+    }, ms);
+    dealAnimTimers.push(id);
+    return id;
+  };
   const ringEl = $("ring");
   const rr = ringEl ? ringEl.getBoundingClientRect() : null;
   const cx = rr && rr.width ? (rr.left + rr.width / 2) : (innerWidth / 2);
@@ -2226,7 +2265,7 @@ function runMultiDealAnimation(view) {
   pileBadges.forEach((b) => { if (b) b.style.visibility = "hidden"; });
   pileHints.forEach((h) => { if (h) h.style.visibility = "hidden"; });
   slotImgs.forEach((arr) => arr.forEach((im) => { if (im) im.style.visibility = "hidden"; }));
-  setTimeout(() => {
+  schedDeal(() => {
     pileImgs.forEach((im) => { if (im) im.style.visibility = ""; });
     pileBadges.forEach((b) => { if (b) b.style.visibility = ""; });
     pileHints.forEach((h) => { if (h) h.style.visibility = ""; });
@@ -2285,9 +2324,10 @@ function runMultiDealAnimation(view) {
     playLockedUntil = dealBaseAt + totalDur + 1400;
     dealReveal = { pilesAt: {}, slotsAt: {} };
 
-    setTimeout(() => {
+    schedDeal(() => {
       stage.remove();
       const ringWrap = document.createElement("div");
+      ringWrap.className = "deal-ring-wrap";
       ringWrap.style.cssText = `position:fixed;left:${cx}px;top:${cy}px;width:0;height:0;z-index:42;pointer-events:none;`;
       const ringCards = [];
       for (let i = 0; i < circleCount; i++) {
@@ -2311,7 +2351,7 @@ function runMultiDealAnimation(view) {
       ], { duration: 820 + streamDur + 120, easing: "linear", fill: "forwards" });
       playDealPopSfx(120, 1, "deal");
 
-      setTimeout(() => {
+      schedDeal(() => {
         let cursorMs = 0;
         let cardSeq = 0;
         const peelFromCircle = (toRect, cardName, opts = {}) => {
@@ -2345,7 +2385,7 @@ function runMultiDealAnimation(view) {
           for (let k = 0; k < playerCardCount; k++) {
             const d = cursorMs + k * perCardDelay;
             const isFirst = k === 0;
-            setTimeout(() => {
+            schedDeal(() => {
               peelFromCircle(getPileRect(p), "card_back", {
                 hideEl: isFirst ? getPileImg(p) : null,
                 hideAlso: isFirst ? getPileBadge(p) : null,
@@ -2365,16 +2405,16 @@ function runMultiDealAnimation(view) {
             if (cname) {
               const sDelay = stackStartOffset + sIdx * stackStepMs;
               dealReveal.slotsAt[p + "|" + slot] = dealBaseAt + streamStartMs + sDelay + stackDur;
-              setTimeout(() => {
+              schedDeal(() => {
                 flyCard(getPileRect(p), getSlotRect(p, slot), cname, { flip: true, delay: 0, duration: stackDur, hideEl: getSlotImg(p, slot) });
               }, sDelay);
-              setTimeout(() => playSfx("stack"), sDelay + stackDur);
+              schedDeal(() => playSfx("stack"), sDelay + stackDur);
               sIdx++;
             }
           }
         }
-        setTimeout(() => { ringWrap.remove(); }, cursorMs + 80);
-        setTimeout(() => {
+        schedDeal(() => { ringWrap.remove(); }, cursorMs + 80);
+        schedDeal(() => {
           playDealPopSfx(0, totalCards, "land");
           vibrate([20, 24, 24]);
           const starter = view.turn_player || dealPlayers[0];
@@ -2402,7 +2442,7 @@ function runMultiDealAnimation(view) {
   playLockedUntil = dealingUntil + 1400;
   dealReveal = { pilesAt: {}, slotsAt: {} };
 
-  setTimeout(() => {
+  schedDeal(() => {
     stage.remove();
     for (let i = 0; i < pileThrows; i++) {
       const pIdx = i % dealPlayers.length;
@@ -2412,7 +2452,7 @@ function runMultiDealAnimation(view) {
       if (isFirstForPlayer) {
         dealReveal.pilesAt[p] = dealBaseAt + dealStartMs + d + cardDur;
       }
-      setTimeout(() => {
+      schedDeal(() => {
         flyCard(fromR, getPileRect(p), "card_back", {
           delay: 0,
           duration: cardDur,
@@ -2432,15 +2472,15 @@ function runMultiDealAnimation(view) {
         if (cname) {
           const sDelay = stackDelayBase + sIdx * stackDelayStep;
           dealReveal.slotsAt[p + "|" + slot] = dealBaseAt + dealStartMs + sDelay + stackDur;
-          setTimeout(() => {
+          schedDeal(() => {
             flyCard(getPileRect(p), getSlotRect(p, slot), cname, { flip: true, delay: 0, duration: stackDur, hideEl: getSlotImg(p, slot) });
           }, sDelay);
-          setTimeout(() => playSfx("stack"), sDelay + stackDur);
+          schedDeal(() => playSfx("stack"), sDelay + stackDur);
           sIdx++;
         }
       }
     }
-    setTimeout(() => {
+    schedDeal(() => {
       playDealPopSfx(0, sIdx, "land");
       vibrate([20, 24, 24]);
       const starter = view.turn_player || dealPlayers[0];
@@ -2841,6 +2881,7 @@ if ($("chat-form")) $("chat-form").addEventListener("submit", (e) => {
 });
 
 function connect(joinMsg) {
+  clearAllActiveAnims();
   intentionalLeave = false;
   if (ws && ws.readyState < 2) { try { ws.close(); } catch (e) { /* ignore */ } }
   if (!joinMsg.solo) {
@@ -3788,6 +3829,8 @@ function showLeaderboard(view) {
   }
 }
 let lbExitInFlight = false;
+let lbExitTimer = null;
+let lbExitAnims = [];
 let pendingPostStandingsView = null;
 function clearBoardForTransition() {
   document.querySelectorAll("#ring .seat").forEach((s) => s.remove());
@@ -3825,7 +3868,11 @@ function animateStandingsExit(onDone) {
   });
   const totalMs = Math.max(220, (popEls.length - 1) * stepMs + durMs);
   anims.push(lb.animate([{ opacity: 1 }, { opacity: 0 }], { duration: Math.min(240, totalMs), delay: Math.max(0, totalMs - 200), easing: "ease-out", fill: "forwards" }));
-  setTimeout(() => {
+  lbExitAnims = anims;
+  clearTimeout(lbExitTimer);
+  lbExitTimer = setTimeout(() => {
+    lbExitTimer = null;
+    lbExitAnims = [];
     lbExitInFlight = false;
     lb.hidden = true;
     lb.style.pointerEvents = "";
@@ -4105,6 +4152,8 @@ function playBreathePopSfx(delayMs = 0, kind = "in", idx = 0) {
       gain.gain.exponentialRampToValueAtTime(0.0005, t + 0.06);
     }
     osc.connect(gain).connect(sfxCtx.destination);
+    scheduledPopOscs.push(osc);
+    osc.onended = () => { const i = scheduledPopOscs.indexOf(osc); if (i >= 0) scheduledPopOscs.splice(i, 1); };
     osc.start(t);
     osc.stop(t + 0.065);
   } catch (e) { /* audio unsupported */ }
@@ -4141,6 +4190,8 @@ function playDealPopSfx(delayMs = 0, step = 0, kind = "deal") {
       gain.gain.exponentialRampToValueAtTime(0.0005, t + 0.054);
     }
     osc.connect(gain).connect(sfxCtx.destination);
+    scheduledPopOscs.push(osc);
+    osc.onended = () => { const i = scheduledPopOscs.indexOf(osc); if (i >= 0) scheduledPopOscs.splice(i, 1); };
     osc.start(t);
     osc.stop(t + 0.066);
   } catch (e) { /* audio unsupported */ }
@@ -5222,11 +5273,49 @@ document.addEventListener("fullscreenchange", syncFsLabel);
 document.addEventListener("webkitfullscreenchange", syncFsLabel);
 
 let exitAnimInFlight = false;
+let arenaExitTimer = null;
+let arenaExitAnims = [];
 function resetPersistentUiAnims() {
-  ["coach", "tut-intro-box", "tut-goal-box", "tiki-box"].forEach((id) => {
+  ["arena", "leaderboard", "lobby-layer", "ring", "table-center", "coach", "tut-intro-box", "tut-goal-box", "tiki-box"].forEach((id) => {
     const el = $(id);
     if (el && el.getAnimations) el.getAnimations().forEach((a) => { try { a.cancel(); } catch (e) {} });
   });
+  document.querySelectorAll("#leaderboard .lb-heading, #leaderboard #lb-room-code, #leaderboard #lb-podium, #leaderboard #lb-losers, #leaderboard #lb-list > li, #leaderboard #lb-bots, #leaderboard .leaderboard-card > .tut-nav").forEach((el) => {
+    if (el.getAnimations) el.getAnimations().forEach((a) => { try { a.cancel(); } catch (e) {} });
+  });
+}
+function clearAllActiveAnims() {
+  globalAnimEpoch++;
+  stopScheduledPopSfx();
+  clearMultiDealAnims();
+  if (typeof clearTutDealTimers === "function") clearTutDealTimers();
+  clearTimeout(arenaExitTimer); arenaExitTimer = null;
+  arenaExitAnims.forEach((a) => { try { a.cancel(); } catch (e) {} });
+  arenaExitAnims = [];
+  exitAnimInFlight = false;
+  clearTimeout(lbExitTimer); lbExitTimer = null;
+  lbExitAnims.forEach((a) => { try { a.cancel(); } catch (e) {} });
+  lbExitAnims = [];
+  lbExitInFlight = false;
+  if ($("leaderboard")) $("leaderboard").style.pointerEvents = "";
+  pendingPostStandingsView = null;
+  if (typeof clearSlapHandVisual === "function") clearSlapHandVisual(false);
+  if (typeof localSlapCount !== "undefined") localSlapCount = 0;
+  stopEndScreenSfx();
+  if (typeof stopFreakyThudLoop === "function") stopFreakyThudLoop();
+  if (typeof stopSfx === "function") stopSfx("freaky");
+  stopTableSpark();
+  clearTimeout(bigTimer); bigTimer = null;
+  if ($("big-overlay")) { $("big-overlay").hidden = true; $("big-overlay").className = ""; }
+  hideVarReplay();
+  clearTimeout(lbDelayTimer); lbDelayTimer = null;
+  clearTimeout(midHoldTimer); midHold = null; midHoldTimer = null;
+  clearTimeout(screenShakeTimer); screenShakeTimer = null;
+  if ($("arena")) $("arena").classList.remove("scenery-enter", "screen-shake", "screen-shake-light", "screen-shake-heavy");
+  const fx = document.getElementById("fx");
+  if (fx) fx.replaceChildren();
+  document.querySelectorAll(".lobby-exit-ghost, .fly, .grab-hand, .grab-float, .tut-shuffle-stage, .deal-ring-wrap, .slap-hand-lunge, .fw-ring, .fw-spark, .particle").forEach((el) => el.remove());
+  resetPersistentUiAnims();
 }
 function animateArenaExit(onDone) {
   if (reduceMotion || exitAnimInFlight || !$("game-box") || $("game-box").hidden) {
@@ -5256,7 +5345,11 @@ function animateArenaExit(onDone) {
     playBreathePopSfx(idx * stepMs, "out", idx);
   });
   const totalMs = (targets.length - 1) * stepMs + durMs + 30;
-  setTimeout(() => {
+  arenaExitAnims = anims;
+  clearTimeout(arenaExitTimer);
+  arenaExitTimer = setTimeout(() => {
+    arenaExitTimer = null;
+    arenaExitAnims = [];
     exitAnimInFlight = false;
     onDone();
     // Cancel fill-forwards animations so persistent elements (#coach, #tut-intro-box, #tut-goal-box, #tiki-box)
@@ -5268,8 +5361,7 @@ function animateArenaExit(onDone) {
 function finalizeLeaveToHome() {
   intentionalLeave = true;
   lastJoinMsg = null;
-  clearTimeout(lbDelayTimer); lbDelayTimer = null;
-  stopEndScreenSfx();
+  clearAllActiveAnims();
   cancelGrab({ refresh: false });
   cleanupGiveawayDrag();
   clearStackMsgs();
@@ -5304,6 +5396,7 @@ function finalizeLeaveToHome() {
   log("Returned to Home");
 }
 function leaveToHome(instant = false) {
+  clearAllActiveAnims();
   const runExit = () => {
     if (instant !== true && $("leaderboard") && !$("leaderboard").hidden) {
       animateStandingsExit(finalizeLeaveToHome);
@@ -6187,6 +6280,7 @@ function refreshCoachReal() {
 
 function openPractice(kind) {
   if (!myName || !ws) return;
+  clearAllActiveAnims();
   setCoachMode(false);
   if (practice) { clearInterval(practice.timer); clearTimeout(practice.resetTimer); }
   cancelGrab({ refresh: false });
@@ -6212,6 +6306,7 @@ function openPractice(kind) {
 }
 function endPractice(silent) {
   if (!practice) return;
+  clearAllActiveAnims();
   setCoachMode(false);
   clearInterval(practice.timer); clearTimeout(practice.resetTimer);
   practice = null;
@@ -6758,7 +6853,7 @@ function startTutorial() {
   loadTutStep(0);
 }
 function endTutorial() {
-  clearTutDealTimers();
+  clearAllActiveAnims();
   animateArenaExit(() => {
     endPractice(true);
     $("game-box").hidden = true;
@@ -6770,7 +6865,7 @@ function endTutorial() {
 }
 function loadTutStep(i) {
   tutReloading = !!practice;
-  clearTutDealTimers();
+  clearAllActiveAnims();
   if (practice) { clearInterval(practice.timer); clearTimeout(practice.resetTimer); }
   cancelGrab({ refresh: false });
   cleanupGiveawayDrag();
