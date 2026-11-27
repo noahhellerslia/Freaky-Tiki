@@ -703,7 +703,7 @@ async def ws(ws: WebSocket):
                                 await broadcast(room)
             elif kind == "set_color" and room and name:
                 entry = rooms[room]
-                if entry["state"] is not None and entry["state"].phase != "over":
+                if entry["state"] is not None:
                     await ws.send_json({"type": "error", "error": "colors can only be changed in the lobby"})
                 elif name not in entry["players"]:
                     await ws.send_json({"type": "error", "error": "only seated players can pick a color"})

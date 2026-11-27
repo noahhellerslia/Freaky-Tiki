@@ -2475,7 +2475,11 @@ function renderActions(view, oldView) {
       if (!lbDelayTimer && $("leaderboard").hidden) {
         lbDelayTimer = setTimeout(() => {
           lbDelayTimer = null;
-          if (prevView && prevView.phase === "over") showLeaderboard(prevView);
+          if (prevView && prevView.phase === "over") {
+            animateArenaExit(() => {
+              if (prevView && prevView.phase === "over") showLeaderboard(prevView);
+            });
+          }
         }, 2100);
       }
     } else if (!lbDelayTimer) {
@@ -3733,7 +3737,19 @@ function showLeaderboard(view) {
     lbShownFor = key;
     $("board-peek").hidden = true;
     $("leaderboard").hidden = false;
-    triggerPageBlur($("leaderboard"));
+    if (!reduceMotion) {
+      $("leaderboard").animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: "ease-out" });
+      const popEls = [
+        ...document.querySelectorAll("#leaderboard .lb-heading, #leaderboard #lb-room-code:not([hidden]), #leaderboard #lb-podium:not(:empty), #leaderboard #lb-losers:not(:empty), #leaderboard #lb-list > li, #leaderboard #lb-bots:not([hidden]), #leaderboard .leaderboard-card > .tut-nav"),
+      ];
+      popEls.forEach((el, idx) => {
+        el.animate([
+          { opacity: 0, transform: "scale(0.84)" },
+          { opacity: 1, transform: "scale(1)" },
+        ], { duration: 360, delay: 40 + idx * 45, easing: "cubic-bezier(.22, 1, .36, 1)", fill: "backwards" });
+        playBreathePopSfx(40 + idx * 45, "in", idx);
+      });
+    }
     startEndScreenSfx();
     clearInterval(endFireworksTimer);
     endFireworksTimer = null;
@@ -4804,15 +4820,18 @@ function updateHandCursorAppearance(playersList) {
 function renderSettingsColorPicker() {
   const box = $("settings-color-picker");
   if (!box) return;
+  const inStandings = !!($("leaderboard") && !$("leaderboard").hidden);
   box.replaceChildren();
   GRAB_COLORS.forEach((hex, c) => {
     const sw = document.createElement("button");
     sw.type = "button";
     sw.className = "settings-color-swatch" + (preferredColor === c ? " selected" : "");
     sw.style.backgroundColor = hex;
-    sw.title = `Color ${c + 1}`;
+    sw.disabled = inStandings;
+    sw.title = inStandings ? "Colors cannot be changed in Tiki Standings" : `Color ${c + 1}`;
     sw.setAttribute("aria-label", `Choose color ${c + 1}`);
     sw.addEventListener("click", () => {
+      if ($("leaderboard") && !$("leaderboard").hidden) return;
       preferredColor = c;
       try { localStorage.setItem("ft_pref_color", String(c)); } catch (err) { /* private mode */ }
       renderSettingsColorPicker();
@@ -4982,6 +5001,7 @@ function setSettingsOpen(open) {
     el._fadeAnim = null;
   }
   if (open) {
+    renderSettingsColorPicker();
     el._closing = false;
     el.style.pointerEvents = "";
     el.hidden = false;
