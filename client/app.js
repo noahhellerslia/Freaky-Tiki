@@ -2488,7 +2488,11 @@ function renderActions(view, oldView) {
     return;
   }
   clearTimeout(lbDelayTimer); lbDelayTimer = null;
-  $("leaderboard").hidden = true;
+  if ($("leaderboard") && !$("leaderboard").hidden && !lbExitInFlight) {
+    animateStandingsExit(() => {});
+  } else if (!lbExitInFlight) {
+    $("leaderboard").hidden = true;
+  }
   lbShownFor = null;
   stopEndScreenSfx();
   if (view.last_drop && view.last_drop.seq > lastDropSeq) {
@@ -3766,10 +3770,49 @@ function showLeaderboard(view) {
     endFireworkBurstTimers.push(startBurstTimer);
   }
 }
+let lbExitInFlight = false;
+function animateStandingsExit(onDone) {
+  const lb = $("leaderboard");
+  if (!lb || lb.hidden || reduceMotion || lbExitInFlight) {
+    if (lb) lb.hidden = true;
+    if ($("board-peek")) $("board-peek").hidden = true;
+    if (onDone) onDone();
+    return;
+  }
+  lbExitInFlight = true;
+  stopEndScreenSfx();
+  if ($("board-peek")) $("board-peek").hidden = true;
+  lb.style.pointerEvents = "none";
+  const popEls = [
+    ...document.querySelectorAll("#leaderboard .lb-heading, #leaderboard #lb-room-code:not([hidden]), #leaderboard #lb-podium:not(:empty), #leaderboard #lb-losers:not(:empty), #leaderboard #lb-list > li, #leaderboard #lb-bots:not([hidden]), #leaderboard .leaderboard-card > .tut-nav"),
+  ].reverse();
+  const stepMs = 36;
+  const durMs = 260;
+  const anims = [];
+  popEls.forEach((el, idx) => {
+    anims.push(el.animate([
+      { opacity: 1, transform: "scale(1)" },
+      { opacity: 0, transform: "scale(0.84)" },
+    ], { duration: durMs, delay: idx * stepMs, easing: "cubic-bezier(.4, 0, .2, 1)", fill: "forwards" }));
+    playBreathePopSfx(idx * stepMs, "out", idx);
+  });
+  const totalMs = Math.max(220, (popEls.length - 1) * stepMs + durMs);
+  anims.push(lb.animate([{ opacity: 1 }, { opacity: 0 }], { duration: Math.min(240, totalMs), delay: Math.max(0, totalMs - 200), easing: "ease-out", fill: "forwards" }));
+  setTimeout(() => {
+    lbExitInFlight = false;
+    lb.hidden = true;
+    lb.style.pointerEvents = "";
+    anims.forEach((a) => { try { a.cancel(); } catch (e) {} });
+    if (onDone) onDone();
+  }, totalMs + 25);
+}
 if ($("lb-add-bot")) $("lb-add-bot").addEventListener("click", () => send({ type: "add_bot" }));
 if ($("lb-remove-bot")) $("lb-remove-bot").addEventListener("click", () => send({ type: "remove_bot" }));
 if ($("lb-bot-diff")) $("lb-bot-diff").addEventListener("click", (e) => send({ type: "set_rule", bot_difficulty: e.currentTarget.dataset.diff === "hard" ? "easy" : "hard" }));
-$("lb-again").addEventListener("click", () => { clearTimeout(lbDelayTimer); lbDelayTimer = null; stopEndScreenSfx(); $("board-peek").hidden = true; $("leaderboard").hidden = true; triggerPageBlur($("arena")); send({ type: "start" }); });
+$("lb-again").addEventListener("click", () => {
+  clearTimeout(lbDelayTimer); lbDelayTimer = null;
+  animateStandingsExit(() => { send({ type: "start" }); });
+});
 $("lb-close").addEventListener("click", () => {
   const stage = $("board-peek-stage");
   if (stage && $("ring")) {
@@ -5175,7 +5218,11 @@ function finalizeLeaveToHome() {
 }
 function leaveToHome(instant = false) {
   const runExit = () => {
-    if (instant === true || !$("leaderboard").hidden || !$("lobby-layer").hidden) {
+    if (instant !== true && $("leaderboard") && !$("leaderboard").hidden) {
+      animateStandingsExit(finalizeLeaveToHome);
+      return;
+    }
+    if (instant === true || !$("lobby-layer").hidden) {
       finalizeLeaveToHome();
       return;
     }
