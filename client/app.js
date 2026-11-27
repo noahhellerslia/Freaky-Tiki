@@ -2571,6 +2571,10 @@ function renderActions(view, oldView) {
   } else {
     updateDecisionTimer(null, "", null);
   }
+  if (view.phase !== "joker") {
+    localSlapCount = 0;
+    if (slapHandEl && !slapHandEl._impacting) clearSlapHandVisual(false);
+  }
   if ((view.phase === "joker" || view.phase === "joker_choose") && view.joker) {
     const j = view.joker;
     if (view.phase === "joker") {
@@ -4586,12 +4590,72 @@ function playSlapHitSfx(isFinal = false, progress = 0) {
     });
   } catch (e) { /* audio unsupported */ }
 }
+let slapHandEl = null;
+let slapHandClearTimer = null;
+let localSlapCount = 0;
+function clearSlapHandVisual(fade = false) {
+  clearTimeout(slapHandClearTimer);
+  slapHandClearTimer = null;
+  if (!slapHandEl) return;
+  const el = slapHandEl;
+  slapHandEl = null;
+  if (!fade) { el.remove(); return; }
+  el.style.opacity = "0";
+  setTimeout(() => el.remove(), 200);
+}
+function updateSlapHandVisual(presses, thresh) {
+  if (reduceMotion) return;
+  const centerEl = document.querySelector("#table-center .middle-top") || document.querySelector("#table-center img") || $("table-center");
+  const mySeat = seatEl(myName) || document.querySelector(".seat.me");
+  if (!centerEl) return;
+  const cr = centerEl.getBoundingClientRect();
+  const tx = cr.left + cr.width / 2;
+  const ty = cr.top + cr.height / 2;
+  let sx = tx, sy = Math.min(innerHeight - 36, ty + 220);
+  if (mySeat) {
+    const sr = mySeat.getBoundingClientRect();
+    sx = sr.left + sr.width / 2;
+    sy = sr.top + sr.height * 0.25;
+  }
+  const players = (prevView && prevView.playing_counts) ? Object.keys(prevView.playing_counts) : [];
+  if (!slapHandEl || !slapHandEl.isConnected) {
+    clearSlapHandVisual(false);
+    const img = document.createElement("img");
+    img.className = "slap-hand-lunge";
+    img.src = handSrc(myName, players);
+    img.alt = "";
+    img.style.left = sx + "px";
+    img.style.top = sy + "px";
+    img.style.opacity = "0.95";
+    fxLayer().append(img);
+    void img.offsetWidth;
+    slapHandEl = img;
+  }
+  const isFinal = presses >= thresh;
+  const frac = isFinal ? 1 : Math.min(0.86, 0.18 + (presses / Math.max(1, thresh)) * 0.68);
+  const x = sx + (tx - sx) * frac;
+  const y = sy + (ty - sy) * frac;
+  const deg = Math.atan2(ty - sy, tx - sx) * (180 / Math.PI) + 90;
+  const scale = isFinal ? 1.32 : (0.95 + frac * 0.22);
+  slapHandEl.style.left = x + "px";
+  slapHandEl.style.top = y + "px";
+  slapHandEl.style.transform = `translate(-50%, -50%) rotate(${deg.toFixed(1)}deg) scale(${scale.toFixed(2)})`;
+  slapHandEl.style.opacity = "1";
+  if (isFinal) {
+    slapHandEl._impacting = true;
+    clearTimeout(slapHandClearTimer);
+    slapHandClearTimer = setTimeout(() => clearSlapHandVisual(true), 280);
+  }
+}
 function triggerLocalSlapSfx() {
   const j = prevView && prevView.joker;
-  const nextPress = j ? ((j.your_presses || 0) + 1) : 1;
+  const srvPress = j ? (j.your_presses || 0) : 0;
   const thresh = (j && j.your_threshold) ? j.your_threshold : 2;
+  localSlapCount = Math.min(thresh, Math.max(localSlapCount, srvPress) + 1);
+  const nextPress = localSlapCount;
   const isFinal = nextPress >= thresh;
   if (isFinal) lastLocalSlapFinalAt = Date.now();
+  updateSlapHandVisual(nextPress, thresh);
   playSlapHitSfx(isFinal, Math.min(1, nextPress / thresh));
   screenShake(isFinal ? "heavy" : "normal");
 }
@@ -6494,29 +6558,39 @@ function runTutShuffleAndDeal() {
     if (practice !== pr) return;
     stage.remove();
     tutGoalStatus("Dealing", "Dealing clockwise to every player…");
-    const pileRects = players.map((p) => {
+    const getPileRect = (p) => {
       const seat = seatEl(p);
-      return cardRectOf(seat && (seat.querySelector(".pile-empty-slot") || seat.querySelector(".pilewrap"))) || deckFrom;
-    });
-    const slotRects = players.map((p) => {
+      return cardRectOf(seat && (seat.querySelector(".seat-pile") || seat.querySelector(".pile-empty-slot") || seat.querySelector(".pilewrap"))) || deckFrom;
+    };
+    const getSlotRect = (p, idx) => {
       const seat = seatEl(p);
       const slots = seat ? [...seat.querySelectorAll(".backs > *")] : [];
-      return [0, 1].map((idx) => cardRectOf(slots[idx]) || pileRects[players.indexOf(p)]);
-    });
+      const el = slots[idx];
+      return cardRectOf((el && el.querySelector("img")) || el) || getPileRect(p);
+    };
 
-    // 16 playing-pile cards flying clockwise
+    // 16 playing-pile cards flying clockwise (4 rounds x 4 players)
     const pileThrows = 16;
     const pileStep = 95;
+    const roundsPerPlayer = Math.max(1, Math.ceil(pileThrows / players.length));
     for (let i = 0; i < pileThrows; i++) {
       const pIdx = i % players.length;
+      const p = players[pIdx];
+      const roundIdx = Math.floor(i / players.length) + 1;
       const d = i * pileStep;
-      flyCard(deckFrom, pileRects[pIdx], "card_back", { delay: d, duration: cardDur });
       tutDealTimers.push(setTimeout(() => {
-        if (practice === pr) {
-          playSfx("stack");
-          if (i % 4 === 0) vibrate(10);
-        }
+        if (practice !== pr) return;
+        flyCard(deckFrom, getPileRect(p), "card_back", { delay: 0, duration: cardDur });
+        playSfx("stack");
+        if (i % 4 === 0) vibrate(10);
       }, d));
+      tutDealTimers.push(setTimeout(() => {
+        if (practice !== pr) return;
+        const fullPile = dealt.playing[p] || [];
+        const targetCount = Math.min(fullPile.length, Math.ceil((fullPile.length * roundIdx) / roundsPerPlayer));
+        pr.game.playing[p] = fullPile.slice(0, targetCount);
+        practiceRender();
+      }, d + cardDur));
     }
 
     // 8 face-up stacking cards (2 per player) flipping from each player's playing pile
@@ -6529,13 +6603,21 @@ function runTutShuffleAndDeal() {
         const p = players[pIdx];
         const cardName = (dealt.stacking[p] && dealt.stacking[p][slot]) || "card_back";
         const d = stackDelayBase + sIdx * stackStep;
-        flyCard(pileRects[pIdx], slotRects[pIdx][slot], cardName, { flip: true, delay: d, duration: stackDur });
-        tutDealTimers.push(setTimeout(() => { if (practice === pr) playSfx("stack"); }, d + stackDur));
+        tutDealTimers.push(setTimeout(() => {
+          if (practice !== pr) return;
+          flyCard(getPileRect(p), getSlotRect(p, slot), cardName, { flip: true, delay: 0, duration: stackDur });
+        }, d));
+        tutDealTimers.push(setTimeout(() => {
+          if (practice !== pr) return;
+          if (pr.game.stacking[p]) pr.game.stacking[p][slot] = cardName;
+          playSfx("stack");
+          practiceRender();
+        }, d + stackDur));
         sIdx++;
       }
     }
 
-    const landMs = stackDelayBase + sIdx * stackStep + stackDur - 100;
+    const landMs = stackDelayBase + sIdx * stackStep + stackDur + 40;
     tutDealTimers.push(setTimeout(() => {
       if (practice !== pr) return;
       pr.game.playing = dealt.playing;
