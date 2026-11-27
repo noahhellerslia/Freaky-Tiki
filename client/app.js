@@ -1590,9 +1590,11 @@ function render(view, keepError) {
           const stepMs = 95;
           const durMs = 1050;
           exitEls.forEach(({ el }, idx) => {
+            const baseT = getComputedStyle(el).transform;
+            const prefix = (baseT && baseT !== "none") ? baseT + " " : "";
             el.animate([
-              { opacity: 1, transform: "scale(1)" },
-              { opacity: 0, transform: "scale(0.84)" }
+              { opacity: 1, transform: `${prefix}scale(1)` },
+              { opacity: 0, transform: `${prefix}scale(0.84)` }
             ], { duration: durMs, delay: idx * stepMs, easing: "cubic-bezier(.4, 0, .2, 1)", fill: "forwards" });
             playBreathePopSfx(idx * stepMs, "out", idx);
           });
@@ -5095,9 +5097,11 @@ function animateArenaExit(onDone) {
   const durMs = 340;
   const anims = [];
   targets.forEach(({ el }, idx) => {
+    const baseT = getComputedStyle(el).transform;
+    const prefix = (baseT && baseT !== "none") ? baseT + " " : "";
     anims.push(el.animate([
-      { opacity: 1, transform: "scale(1)" },
-      { opacity: 0, transform: "scale(0.84)" }
+      { opacity: 1, transform: `${prefix}scale(1)` },
+      { opacity: 0, transform: `${prefix}scale(0.84)` }
     ], { duration: durMs, delay: idx * stepMs, easing: "cubic-bezier(.4, 0, .2, 1)", fill: "forwards" }));
     playBreathePopSfx(idx * stepMs, "out", idx);
   });
