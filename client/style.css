@@ -674,6 +674,27 @@ hr { border: none; border-top: 3px dotted var(--wood-hi); margin: 16px 0; }
 
 /* ---- flying-card animations ---- */
 #fx { position: fixed; inset: 0; pointer-events: none; z-index: 110; }
+#spark-fx { position: fixed; inset: 0; pointer-events: none; z-index: 140; }
+#page-blur-veil {
+  position: fixed; inset: 0; z-index: 135; pointer-events: none;
+  opacity: 0; background: rgba(15, 9, 24, 0);
+  backdrop-filter: blur(0px); -webkit-backdrop-filter: blur(0px);
+}
+#page-blur-veil.active {
+  animation: pageBlurFlash .28s ease-out forwards;
+}
+@keyframes pageBlurFlash {
+  0%   { opacity: 0; background: rgba(15, 9, 24, 0); backdrop-filter: blur(0px); -webkit-backdrop-filter: blur(0px); }
+  28%  { opacity: 1; background: rgba(15, 9, 24, .22); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  100% { opacity: 0; background: rgba(15, 9, 24, 0); backdrop-filter: blur(0px); -webkit-backdrop-filter: blur(0px); }
+}
+.page-blur-in {
+  animation: pageBlurIn .24s ease-out;
+}
+@keyframes pageBlurIn {
+  0%   { opacity: .45; filter: blur(6px); }
+  100% { opacity: 1; filter: blur(0px); }
+}
 .fly {
   position: fixed; border-radius: 6px; box-shadow: var(--card-shadow);
   image-rendering: pixelated; z-index: 41;

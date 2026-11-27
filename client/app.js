@@ -1045,7 +1045,7 @@ function stackEventFx(old, v) {
       particles(snapshotRects().center, 14, stackColor);
     }, 660);
   } else if ((v.last_miss && (!old.last_miss || v.last_miss.seq !== old.last_miss.seq))
-             || (v.middle_count === 0 && old.phase !== "joker_choose" && (midDelta < 0 || emptied.length))) {
+             || (v.middle_count === 0 && old.phase !== "joker_choose" && old.phase !== "joker" && (midDelta < 0 || emptied.length))) {
     const lm = (v.last_miss && (!old.last_miss || v.last_miss.seq !== old.last_miss.seq)) ? v.last_miss : null;
     const dst = (lm && lm.player) || players.find((p) => ((v.playing_counts[p] || 0) - (old.playing_counts[p] || 0)) > 0);
     const who = dst ? `${dst}: ` : "";
@@ -1186,8 +1186,8 @@ function animateDiff(old, v, oldR) {
       const cimg = document.querySelector("#table-center .middle-top");
       if (cimg) { cimg.classList.add("shake"); setTimeout(() => cimg.classList.remove("shake"), 600); }
     }
-    if (old.phase === "joker" && v.phase === "joker_choose") {
-      const slapWinner = v.joker && v.joker.winner;
+    if (old.phase === "joker" && (v.phase === "joker_choose" || v.phase === "over")) {
+      const slapWinner = (v.joker && v.joker.winner) || (v.finished && v.finished[v.finished.length - 1]);
       bigEvent("SLAP!", "slap", undefined, slapWinner ? handSrc(slapWinner, players) : BIG_ART.slap);
       if (Date.now() - lastLocalSlapFinalAt > 600) playSlapHitSfx(true, 1);
       vibrate([85, 35, 120]);
@@ -1394,8 +1394,10 @@ function render(view, keepError) {
     void tiki.offsetWidth;
     tiki.classList.add("tiki-pop");
   }
+  const enteringGame = $("game-box").hidden;
   $("join-box").hidden = true;
   $("game-box").hidden = false;
+  if (enteringGame) triggerPageBlur($("game-box"));
   document.body.classList.add("in-game");
   if ($("disconnect-bar")) $("disconnect-bar").hidden = true;
   if (!keepError) showError("");
@@ -2974,10 +2976,35 @@ function setMpTab(mode) {
     loadPublicRooms();
   }
 }
-function showHomeSubpage(page) {
+let _pageBlurInit = false;
+function triggerPageBlur(targetEl) {
+  if (reduceMotion) return;
+  let veil = document.getElementById("page-blur-veil");
+  if (!veil) {
+    veil = document.createElement("div");
+    veil.id = "page-blur-veil";
+    veil.setAttribute("aria-hidden", "true");
+    document.body.append(veil);
+  }
+  veil.classList.remove("active");
+  void veil.offsetWidth;
+  veil.classList.add("active");
+  if (targetEl) {
+    targetEl.classList.remove("page-blur-in");
+    void targetEl.offsetWidth;
+    targetEl.classList.add("page-blur-in");
+    clearTimeout(targetEl._blurInTimer);
+    targetEl._blurInTimer = setTimeout(() => targetEl.classList.remove("page-blur-in"), 260);
+  }
+}
+function showHomeSubpage(page, skipBlur = false) {
+  const target = page === "multiplayer" ? $("multiplayer-view")
+    : page === "practice" ? $("practice-view") : $("home-menu");
   if ($("home-menu")) $("home-menu").hidden = page !== "menu";
   if ($("multiplayer-view")) $("multiplayer-view").hidden = page !== "multiplayer";
   if ($("practice-view")) $("practice-view").hidden = page !== "practice";
+  if (_pageBlurInit && !skipBlur) triggerPageBlur(target);
+  _pageBlurInit = true;
   showError("");
   if (page === "menu") {
     syncRejoinHome();
@@ -3624,16 +3651,27 @@ function showLeaderboard(view) {
     lbShownFor = key;
     $("board-peek").hidden = true;
     $("leaderboard").hidden = false;
+    triggerPageBlur($("leaderboard"));
     startEndScreenSfx();
-    requestAnimationFrame(() => launchStandingsFireworks());
     clearInterval(endFireworksTimer);
-    endFireworksTimer = setInterval(launchStandingsFireworks, 2800);
+    endFireworksTimer = null;
+    const startBurstTimer = setTimeout(() => {
+      if (!endSfxActive || $("leaderboard").hidden) return;
+      for (let i = 0; i < 6; i++) {
+        const bTid = setTimeout(() => {
+          if (endSfxActive && !$("leaderboard").hidden) launchStandingsFireworks();
+        }, i * 180);
+        endFireworkBurstTimers.push(bTid);
+      }
+      endFireworksTimer = setInterval(launchStandingsFireworks, 2800);
+    }, 5000);
+    endFireworkBurstTimers.push(startBurstTimer);
   }
 }
 if ($("lb-add-bot")) $("lb-add-bot").addEventListener("click", () => send({ type: "add_bot" }));
 if ($("lb-remove-bot")) $("lb-remove-bot").addEventListener("click", () => send({ type: "remove_bot" }));
 if ($("lb-bot-diff")) $("lb-bot-diff").addEventListener("click", (e) => send({ type: "set_rule", bot_difficulty: e.currentTarget.dataset.diff === "hard" ? "easy" : "hard" }));
-$("lb-again").addEventListener("click", () => { clearTimeout(lbDelayTimer); lbDelayTimer = null; stopEndScreenSfx(); $("board-peek").hidden = true; $("leaderboard").hidden = true; send({ type: "start" }); });
+$("lb-again").addEventListener("click", () => { clearTimeout(lbDelayTimer); lbDelayTimer = null; stopEndScreenSfx(); $("board-peek").hidden = true; $("leaderboard").hidden = true; triggerPageBlur($("arena")); send({ type: "start" }); });
 $("lb-close").addEventListener("click", () => {
   const stage = $("board-peek-stage");
   if (stage && $("ring")) {
@@ -4730,10 +4768,15 @@ function myPlayerColor() {
   const idx = players.length && myName ? playerIndex(myName, players) : preferredColor;
   return GRAB_COLORS[(idx >= 0 ? idx : preferredColor) % GRAB_COLORS.length];
 }
+function sparkFxLayer() {
+  let l = document.getElementById("spark-fx");
+  if (!l) { l = document.createElement("div"); l.id = "spark-fx"; document.body.append(l); }
+  return l;
+}
 function spawnTableSpark(x, y, count = 4) {
   if (reduceMotion) return;
   const color = myPlayerColor();
-  const layer = fxLayer();
+  const layer = sparkFxLayer();
   for (let i = 0; i < count; i++) {
     const p = document.createElement("div");
     p.className = "particle";
@@ -4913,8 +4956,15 @@ document.addEventListener("fullscreenchange", syncFsLabel);
 document.addEventListener("webkitfullscreenchange", syncFsLabel);
 
 let exitAnimInFlight = false;
+function resetPersistentUiAnims() {
+  ["coach", "tut-intro-box", "tut-goal-box", "tiki-box"].forEach((id) => {
+    const el = $(id);
+    if (el && el.getAnimations) el.getAnimations().forEach((a) => { try { a.cancel(); } catch (e) {} });
+  });
+}
 function animateArenaExit(onDone) {
   if (reduceMotion || exitAnimInFlight || !$("game-box") || $("game-box").hidden) {
+    resetPersistentUiAnims();
     onDone();
     return;
   }
@@ -4924,20 +4974,28 @@ function animateArenaExit(onDone) {
       targets.push({ el, bottom: el.getBoundingClientRect().bottom });
     }
   });
-  if (!targets.length) { onDone(); return; }
+  if (!targets.length) { resetPersistentUiAnims(); onDone(); return; }
   exitAnimInFlight = true;
   targets.sort((a, b) => b.bottom - a.bottom);
   const stepMs = 45;
   const durMs = 340;
+  const anims = [];
   targets.forEach(({ el }, idx) => {
-    el.animate([
+    anims.push(el.animate([
       { opacity: 1, transform: "scale(1)" },
       { opacity: 0, transform: "scale(0.84)" }
-    ], { duration: durMs, delay: idx * stepMs, easing: "cubic-bezier(.4, 0, .2, 1)", fill: "forwards" });
+    ], { duration: durMs, delay: idx * stepMs, easing: "cubic-bezier(.4, 0, .2, 1)", fill: "forwards" }));
     playBreathePopSfx(idx * stepMs, "out", idx);
   });
   const totalMs = (targets.length - 1) * stepMs + durMs + 30;
-  setTimeout(() => { exitAnimInFlight = false; onDone(); }, totalMs);
+  setTimeout(() => {
+    exitAnimInFlight = false;
+    onDone();
+    // Cancel fill-forwards animations so persistent elements (#coach, #tut-intro-box, #tut-goal-box, #tiki-box)
+    // are never stuck at opacity: 0 the next time the player enters a tutorial or practice room.
+    anims.forEach((a) => { try { a.cancel(); } catch (e) {} });
+    resetPersistentUiAnims();
+  }, totalMs);
 }
 function finalizeLeaveToHome() {
   intentionalLeave = true;
@@ -4972,7 +5030,8 @@ function finalizeLeaveToHome() {
   syncRejoinHome();
   setTimeout(syncRejoinHome, 300);
   $("join-box").hidden = false;
-  showHomeSubpage("menu");
+  showHomeSubpage("menu", true);
+  triggerPageBlur($("join-box"));
   showError("");
   log("Returned to Home");
 }
@@ -5551,9 +5610,11 @@ class PGame {
     this.lastSlapper = player;
     const need = (this.jokerFromStacking && player === this.jokerPlacer) ? P_SLAP_STACKING : P_SLAP;
     if (this.presses[player] >= need) {
-      if (this.total(player) === 0) {
+      const active = this.players.filter((p) => !this.finished.includes(p));
+      const endThresh = this.players.length >= 6 ? 3 : 2;
+      if (this.total(player) === 0 && (active.length - 1) <= endThresh) {
         this.jokerPlacer = null; this.presses = {}; this.slapWinner = null; this.lastSlapper = null; this.jokerFromStacking = false; this.jokerDeadline = null;
-        this.middle = []; delete this.pending[player];
+        delete this.pending[player];
         this.stackers = []; this.lastStackAt = null; this.phase = "open"; this.lastPlacementAt = now;
         const idx = this.players.indexOf(player);
         const nxt = this.nextWithCards(idx);
@@ -5939,12 +6000,9 @@ function practiceTick() {
         || t.phase === "intro" || t.dealing || t.done || t.retry) {
       return;
     }
-    // Keep tutorial deadlines paused so the player must complete the required action.
+    // Keep Freaky Tiki deadlines paused in tutorial so the player must call/shed.
     if ((t.step === 6 || t.step === 7) && g.phase === "freaky") {
       g.freakyDeadline = now + 99;
-    }
-    if ((t.step === 8 || t.step === 9) && g.phase === "joker_choose") {
-      g.jokerDeadline = now + 99;
     }
     let changed = g.tick(now);
     if (pPruneGrabs(now)) changed = true;
@@ -5952,6 +6010,13 @@ function practiceTick() {
     // Only allow bots to shed on Step 6 after the player triggers Freaky Tiki.
     // On all other tutorial steps, bots never act autonomously.
     if (t.step === 6 && g.phase === "freaky" && pBotTick(practice, now)) changed = true;
+    // Tick the Joker countdown live in the tutorial every second.
+    const tDl = (g.phase === "joker_choose" && g.jokerDeadline != null) ? g.jokerDeadline : null;
+    const tSec = tDl != null ? Math.max(0, Math.ceil(tDl - now)) : null;
+    if (tSec !== practice.lastCountdownSec) {
+      practice.lastCountdownSec = tSec;
+      if (tSec !== null) changed = true;
+    }
     if (changed) practiceRender();
     return;
   }
@@ -6278,6 +6343,7 @@ function runTutShuffleAndDeal() {
   }, dealStartMs));
 }
 function setCoachMode(on) {
+  resetPersistentUiAnims();
   const c = $("coach");
   c.classList.toggle("tutorial-mode", on);
   c.querySelector(".coach-badge").textContent = on ? "Tutorial" : "Practice room";
@@ -6406,7 +6472,8 @@ function endTutorial() {
     endPractice(true);
     $("game-box").hidden = true;
     $("join-box").hidden = false;
-    showHomeSubpage("menu");
+    showHomeSubpage("menu", true);
+    triggerPageBlur($("join-box"));
     document.body.classList.remove("in-game");
   });
 }

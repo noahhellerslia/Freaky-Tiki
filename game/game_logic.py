@@ -623,6 +623,10 @@ class GameState:
 
     def _valid_joker_targets(self) -> list[str]:
         active = self.active_players()
+        if self.slap_winner is not None and self.total(self.slap_winner) == 0:
+            non_winner = [p for p in active if p != self.slap_winner]
+            if non_winner:
+                active = non_winner
         if (
             self.last_joker_target is not None
             and self.joker_target_streak >= 2
@@ -641,12 +645,12 @@ class GameState:
         self.last_slapper = player
         threshold = SLAP_PRESSES_STACKING_PLACER if (self.joker_from_stacking and player == self.joker_placer) else SLAP_PRESSES
         if self.presses[player] >= threshold:
-            if self.total(player) == 0:
-                # Last card was the Joker and they slapped first: automatic win/finish!
+            if self.total(player) == 0 and (len(self.active_players()) - 1) <= self._end_threshold():
+                # Last card was the Joker and their finish immediately ends the game:
+                # keep self.middle intact (never wipe it) and finish the game cleanly.
                 self.joker_placer, self.presses, self.slap_winner, self.last_slapper = None, {}, None, None
                 self.joker_from_stacking = False
                 self.joker_deadline = None
-                self.middle = []
                 self.pending.pop(player, None)
                 self.stackers, self.last_stack_at = [], None
                 self.phase = "open"
