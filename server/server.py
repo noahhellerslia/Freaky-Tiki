@@ -265,20 +265,59 @@ def _prune_disconnected_players(entry: dict):
                 entry["last_winner"] = None
     entry["players"] = kept
 
-async def broadcast(room_code: str):
+async def _drop_from_lobby_or_standings(room_code: str, entry: dict, player: str) -> None:
+    """Instantly remove a disconnected player when in the lobby or Tiki Standings."""
+    entry["sockets"].pop(player, None)
+    entry.get("waiting", {}).pop(player, None)
+    entry.get("grabs", {}).pop(player, None)
+    if player in entry.get("players", []):
+        entry["players"].remove(player)
+    entry.get("colors", {}).pop(player, None)
+    entry.get("pref_colors", {}).pop(player, None)
+    entry.get("disconnect_times", {}).pop(player, None)
+    if entry.get("last_winner") == player:
+        entry["last_winner"] = None
+    if entry.get("host") == player and entry["sockets"]:
+        entry["host"] = next(iter(entry["sockets"]))
+
+
+async def broadcast(room_code: str, _retry: bool = False):
+    if room_code not in rooms:
+        return
     entry = rooms[room_code]
     state = entry["state"]
+    in_lobby_or_standings = (state is None or state.phase == "over")
     if state is not None and state.phase == "over":
         _record_game_stats(entry, state)
         if state.finished:
             entry["last_winner"] = state.finished[0]   # winner starts the next game (rules)
+    if in_lobby_or_standings:
         _prune_disconnected_players(entry)
+    dead_seated = []
     for name, ws in list(entry["sockets"].items()):
         v = _view(room_code, entry, name)
         k = "state" if v.get("started") else "lobby"
-        await ws.send_json({"type": k, "view": v})
+        try:
+            await ws.send_json({"type": k, "view": v})
+        except Exception:
+            dead_seated.append(name)
+    dead_waiting = []
     for wname, wws in list(entry.get("waiting", {}).items()):
-        await wws.send_json({"type": "lobby", "view": _view(room_code, entry, wname)})
+        try:
+            await wws.send_json({"type": "lobby", "view": _view(room_code, entry, wname)})
+        except Exception:
+            dead_waiting.append(wname)
+    if (dead_seated or dead_waiting) and in_lobby_or_standings:
+        for p in dead_seated + dead_waiting:
+            await _drop_from_lobby_or_standings(room_code, entry, p)
+        if not entry["sockets"] and not entry.get("waiting"):
+            for key in ("ticker", "bot_task"):
+                old = entry.get(key)
+                if old is not None:
+                    old.cancel()
+            rooms.pop(room_code, None)
+        elif not _retry:
+            await broadcast(room_code, _retry=True)
 
 async def room_ticker(room_code: str):
     """Time-driven rules (replacements at +0.25s, stacker-start at +2s,
@@ -903,16 +942,17 @@ async def ws(ws: WebSocket):
     finally:
         if room and name and room in rooms:
             entry = rooms[room]
-            entry["sockets"].pop(name, None)
-            was_waiting = entry.get("waiting", {}).pop(name, None) is not None
+            if entry["sockets"].get(name) is ws:
+                entry["sockets"].pop(name, None)
+            was_waiting = False
+            if entry.get("waiting", {}).get(name) is ws:
+                entry["waiting"].pop(name, None)
+                was_waiting = True
             entry.get("grabs", {}).pop(name, None)
             state = entry["state"]
-            if not was_waiting and (state is None or state.phase == "over") and name in entry["players"]:
-                entry["players"].remove(name)   # left before the next game: no seat to keep
-                entry.get("colors", {}).pop(name, None)
-                entry.get("disconnect_times", {}).pop(name, None)
-                if entry.get("last_winner") == name:
-                    entry["last_winner"] = None
+            if state is None or state.phase == "over":
+                # Instantly drop disconnected players in the lobby or Tiki Standings.
+                await _drop_from_lobby_or_standings(room, entry, name)
             elif not was_waiting and state is not None and state.phase != "over":
                 if name in state.players and name not in state.dropped:
                     entry.setdefault("disconnect_times", {})[name] = time.monotonic()

@@ -846,45 +846,47 @@ function particles(rect, count = 26, color = null) {
     setTimeout(() => p.remove(), 1100);
   }
 }
-function fireworks(rect, color, bursts = 3, silent = false) {
+function fireworks(rect, color, bursts = 3, silent = false, container = null) {
   if (!rect || reduceMotion) return;
+  const host = container || fxLayer();
   const cx = rect.x + rect.w / 2, cy = rect.y + rect.h / 2;
   for (let b = 0; b < bursts; b++) {
     setTimeout(() => {
+      if (container && !container.isConnected) return;
       const ox = cx + (b === 0 ? 0 : (Math.random() * 44 - 22));
-      const oy = cy + (b === 0 ? 0 : (Math.random() * 44 - 22));
+      const oy = cy + (b === 0 ? 0 : (Math.random() * 34 - 17));
       const ring = document.createElement("div");
       ring.className = "fw-ring";
       ring.style.left = ox + "px"; ring.style.top = oy + "px";
-      ring.style.width = ring.style.height = "28px";
+      ring.style.width = ring.style.height = "24px";
       ring.style.borderColor = color;
       ring.style.boxShadow = `0 0 18px ${color}`;
-      fxLayer().append(ring);
+      host.append(ring);
       const ra = ring.animate([
         { transform: "translate(-50%,-50%) scale(.2)", opacity: 1 },
-        { transform: "translate(-50%,-50%) scale(5.4)", opacity: 0 },
+        { transform: "translate(-50%,-50%) scale(4.4)", opacity: 0 },
       ], { duration: 680, easing: "cubic-bezier(.15,.7,.3,1)", fill: "forwards" });
       ra.onfinish = () => ring.remove();
       setTimeout(() => ring.remove(), 800);
-      const count = 28;
+      const count = 24;
       for (let i = 0; i < count; i++) {
         const sp = document.createElement("div");
         sp.className = "fw-spark";
-        const size = 5 + Math.random() * 6;
+        const size = 5 + Math.random() * 5;
         const sparkColor = i % 5 === 0 ? "#fff8dc" : color;
         sp.style.width = sp.style.height = size + "px";
         sp.style.left = ox + "px"; sp.style.top = oy + "px";
         sp.style.background = sparkColor;
         sp.style.boxShadow = `0 0 10px ${color}, 0 0 4px #fff`;
-        fxLayer().append(sp);
+        host.append(sp);
         const ang = (Math.PI * 2 * i) / count + (Math.random() * 0.22 - 0.11);
-        const dist = 85 + Math.random() * 145;
+        const dist = container ? (48 + Math.random() * 78) : (85 + Math.random() * 145);
         const dx = Math.cos(ang) * dist;
         const dy = Math.sin(ang) * dist;
         const sa = sp.animate([
           { transform: "translate(-50%,-50%) scale(1.2)", opacity: 1 },
           { transform: `translate(calc(-50% + ${dx * 0.65}px), calc(-50% + ${dy * 0.65}px)) scale(1)`, opacity: 1, offset: 0.55 },
-          { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy + 55}px)) scale(.25)`, opacity: 0 },
+          { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy + 42}px)) scale(.25)`, opacity: 0 },
         ], { duration: 850 + Math.random() * 350, easing: "cubic-bezier(.15,.65,.35,1)", fill: "forwards" });
         sa.onfinish = () => sp.remove();
         setTimeout(() => sp.remove(), 1400);
@@ -2840,6 +2842,12 @@ function connect(joinMsg) {
     }
   });
 }
+window.addEventListener("pagehide", () => {
+  if (ws && ws.readyState < 2) { try { ws.close(1000, "pagehide"); } catch (e) { /* ignore */ } }
+});
+window.addEventListener("beforeunload", () => {
+  if (ws && ws.readyState < 2) { try { ws.close(1000, "unload"); } catch (e) { /* ignore */ } }
+});
 
 if ($("rejoin-home")) $("rejoin-home").addEventListener("click", () => {
   const s = loadLastSession();
@@ -3119,23 +3127,25 @@ function stopEndScreenSfx() {
     try { endFireAudio.pause(); endFireAudio.currentTime = 0; } catch (e) { /* ignore */ }
   }
 }
+let lbWinnerColors = ["#ffcf4a"];
 function launchStandingsFireworks() {
   const lb = $("leaderboard");
   const podium = $("lb-podium");
-  if (!lb || lb.hidden || !podium || document.hidden) return;
-  const r = podium.getBoundingClientRect();
-  if (!r.width || !r.height) return;
-  const colors = ["#ffcf4a", "#ff5a7a", "#3ddc97", "#ff9f43", "#6ecbff"];
+  const fxHost = podium && podium.querySelector(".lb-podium-fx");
+  if (!lb || lb.hidden || !podium || !fxHost || document.hidden) return;
+  const w = podium.clientWidth, h = podium.clientHeight;
+  if (!w || !h) return;
+  const colors = lbWinnerColors.length ? lbWinnerColors : ["#ffcf4a"];
   const c = colors[Math.floor(Math.random() * colors.length)];
   const fxRect = {
-    x: r.left + r.width * (0.18 + Math.random() * 0.64) - 20,
-    y: r.top + r.height * (0.14 + Math.random() * 0.36) - 20,
-    w: 40,
-    h: 40,
+    x: w * (0.16 + Math.random() * 0.68) - 16,
+    y: h * (0.14 + Math.random() * 0.42) - 16,
+    w: 32,
+    h: 32,
   };
   // IMPORTANT: Keep Tiki Standings fireworks completely silent (silent = true).
   // Do NOT add periodic firework/"psh psh" noises back into the Tiki Standings screen.
-  fireworks(fxRect, c, 2, true);
+  fireworks(fxRect, c, 2, true, fxHost);
 }
 function playLavaBubbleSfx() {
   if (!endSfxActive || !sfxOn || sfxVol <= 0) return;
@@ -3225,7 +3235,14 @@ function showLeaderboard(view) {
   const podium = $("lb-podium");
   if (podium) {
     podium.replaceChildren();
+    const podiumFx = document.createElement("div");
+    podiumFx.className = "lb-podium-fx";
+    podiumFx.setAttribute("aria-hidden", "true");
+    podium.append(podiumFx);
     const topPodium = (view.ranking || []).slice(0, pedSlots);
+    lbWinnerColors = topPodium.length
+      ? topPodium.map((p) => GRAB_COLORS[playerIndex(p, allPlayers)])
+      : ["#ffcf4a"];
     const podiumOrder = topPodium.length >= 3 ? [1, 0, 2]
       : topPodium.length === 2 ? [1, 0]
       : topPodium.length === 1 ? [0] : [];
