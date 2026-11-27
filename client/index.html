@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/client/style.css?v=32">
+<link rel="stylesheet" href="/client/style.css?v=35">
 </head>
 <body>
   <h1 id="title">
@@ -345,10 +345,6 @@
       <div id="lobby-layer" hidden>
         <div id="lobby-tikis"></div>
         <div id="lobby-actions">
-          <div id="lobby-room-code-wrap" class="lobby-room-code-wrap">
-            <span class="lobby-room-code-lbl">Room Code</span>
-            <span id="lobby-room-code" class="lobby-room-code">----</span>
-          </div>
           <div id="lobby-waiting-banner" class="lobby-waiting-banner" hidden></div>
           <div id="lobby-waiting-room" class="waiting-room-panel" hidden></div>
           <div id="lobby-color-picker" class="lobby-color-picker" hidden></div>
@@ -380,7 +376,15 @@
 
       <div id="hud-top">
         <div id="hud-top-row">
+          <div id="lobby-code-box" class="lobby-hud-box lobby-code-box" hidden>
+            <span class="lobby-hud-lbl">Room Code</span>
+            <span id="lobby-hud-code" class="lobby-hud-val">----</span>
+          </div>
           <div id="status"></div>
+          <div id="lobby-privacy-box" class="lobby-hud-box lobby-privacy-box" hidden>
+            <span class="lobby-hud-lbl">Lobby</span>
+            <span id="lobby-hud-privacy" class="lobby-hud-val">Private</span>
+          </div>
           <button id="fast-bots-btn" type="button" class="fast-bots-btn" hidden>Speed up bots</button>
         </div>
         <div id="action-info"></div>
@@ -551,6 +555,6 @@
   </div>
 
   <div id="hand-cursor" class="color-cursor" hidden></div>
-<script src="/client/app.js?v=48"></script>
+<script src="/client/app.js?v=50"></script>
 </body>
 </html>

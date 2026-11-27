@@ -1413,7 +1413,16 @@ function render(view, keepError) {
     $("coach").hidden = true;
     $("action-info").textContent = "";
     if ($("fast-bots-btn")) $("fast-bots-btn").hidden = true;
-    if ($("lobby-room-code")) $("lobby-room-code").textContent = view.room || "----";
+    if ($("hud-top")) $("hud-top").classList.add("in-lobby");
+    if ($("lobby-code-box")) $("lobby-code-box").hidden = false;
+    if ($("lobby-hud-code")) $("lobby-hud-code").textContent = view.room || "----";
+    if ($("lobby-privacy-box")) {
+      const isPub = !!view.public;
+      $("lobby-privacy-box").hidden = false;
+      $("lobby-privacy-box").classList.toggle("is-public", isPub);
+      $("lobby-privacy-box").classList.toggle("is-private", !isPub);
+      if ($("lobby-hud-privacy")) $("lobby-hud-privacy").textContent = isPub ? "Public" : "Private";
+    }
     const wBanner = $("lobby-waiting-banner");
     const dblWrap = $("lobby-dblclick-wrap");
     const dblChk = $("lobby-dblclick");
@@ -1609,6 +1618,9 @@ function render(view, keepError) {
   $("start").hidden = true;
   if ($("lobby-leave")) $("lobby-leave").hidden = true;
   $("lobby-layer").hidden = true;
+  if ($("hud-top")) $("hud-top").classList.remove("in-lobby");
+  if ($("lobby-code-box")) $("lobby-code-box").hidden = true;
+  if ($("lobby-privacy-box")) $("lobby-privacy-box").hidden = true;
   if (!view.practice && practice) endPractice(true);
   $("coach").hidden = !view.practice;
   if (view.phase === "joker_choose" && midHoldActive()) {
@@ -2997,51 +3009,71 @@ function triggerPageBlur(targetEl) {
     targetEl._blurInTimer = setTimeout(() => targetEl.classList.remove("page-blur-in"), 260);
   }
 }
-function crossDissolveHome(outgoingEl, incomingEl) {
-  if (reduceMotion) return;
-  if (outgoingEl && outgoingEl !== incomingEl && !outgoingEl.hidden) {
-    const r = outgoingEl.getBoundingClientRect();
-    if (r.width && r.height) {
-      const ghost = outgoingEl.cloneNode(true);
-      ghost.removeAttribute("id");
-      ghost.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
-      ghost.setAttribute("aria-hidden", "true");
-      ghost.style.position = "fixed";
-      ghost.style.left = r.left + "px";
-      ghost.style.top = r.top + "px";
-      ghost.style.width = r.width + "px";
-      ghost.style.height = r.height + "px";
-      ghost.style.margin = "0";
-      ghost.style.pointerEvents = "none";
-      ghost.style.zIndex = "65";
-      document.body.append(ghost);
-      const a = ghost.animate([
-        { opacity: 1 },
-        { opacity: 0 },
-      ], { duration: 240, easing: "ease-out", fill: "forwards" });
-      a.onfinish = () => ghost.remove();
-      setTimeout(() => ghost.remove(), 280);
-    }
+function clearHomeDissolve(el) {
+  if (!el) return;
+  clearTimeout(el._dissolveTimer);
+  el._dissolveTimer = null;
+  if (el._dissolveAnim) {
+    try { el._dissolveAnim.cancel(); } catch (e) {}
+    el._dissolveAnim = null;
   }
-  if (incomingEl) {
-    incomingEl.classList.remove("page-blur-in");
-    void incomingEl.offsetWidth;
-    incomingEl.classList.add("page-blur-in");
-    clearTimeout(incomingEl._blurInTimer);
-    incomingEl._blurInTimer = setTimeout(() => incomingEl.classList.remove("page-blur-in"), 280);
-  }
+  el.style.position = "";
+  el.style.left = "";
+  el.style.top = "";
+  el.style.width = "";
+  el.style.margin = "";
+  el.style.pointerEvents = "";
+  el.style.zIndex = "";
 }
 function showHomeSubpage(page, skipBlur = false) {
+  const joinBox = $("join-box");
   const pages = [$("home-menu"), $("multiplayer-view"), $("practice-view")];
-  const outgoing = pages.find((el) => el && !el.hidden) || null;
+  const outgoing = pages.find((el) => el && !el.hidden && !el._dissolvingOut) || null;
   const target = page === "multiplayer" ? $("multiplayer-view")
     : page === "practice" ? $("practice-view") : $("home-menu");
-  const shouldCrossDissolve = _pageBlurInit && !skipBlur && outgoing && outgoing !== target;
-  if (shouldCrossDissolve) crossDissolveHome(outgoing, null);
-  if ($("home-menu")) $("home-menu").hidden = page !== "menu";
-  if ($("multiplayer-view")) $("multiplayer-view").hidden = page !== "multiplayer";
-  if ($("practice-view")) $("practice-view").hidden = page !== "practice";
-  if (shouldCrossDissolve) crossDissolveHome(null, target);
+  const shouldCrossDissolve = _pageBlurInit && !skipBlur && !reduceMotion && outgoing && outgoing !== target && joinBox && !joinBox.hidden;
+
+  // Clean up any other stale dissolving pages
+  pages.forEach((el) => {
+    if (!el || el === target) return;
+    if (shouldCrossDissolve && el === outgoing) return;
+    el._dissolvingOut = false;
+    clearHomeDissolve(el);
+    el.hidden = true;
+  });
+
+  if (shouldCrossDissolve) {
+    const jr = joinBox.getBoundingClientRect();
+    const r = outgoing.getBoundingClientRect();
+    outgoing._dissolvingOut = true;
+    clearHomeDissolve(outgoing);
+    if (r.width && r.height) {
+      outgoing.style.position = "absolute";
+      outgoing.style.left = (r.left - jr.left) + "px";
+      outgoing.style.top = (r.top - jr.top) + "px";
+      outgoing.style.width = r.width + "px";
+      outgoing.style.margin = "0";
+      outgoing.style.pointerEvents = "none";
+      outgoing.style.zIndex = "2";
+    }
+    const finishOut = () => {
+      outgoing._dissolvingOut = false;
+      clearHomeDissolve(outgoing);
+      outgoing.hidden = true;
+    };
+    outgoing._dissolveAnim = outgoing.animate([
+      { opacity: 1 },
+      { opacity: 0 },
+    ], { duration: 260, easing: "ease-out", fill: "forwards" });
+    outgoing._dissolveAnim.onfinish = finishOut;
+    outgoing._dissolveTimer = setTimeout(finishOut, 290);
+  }
+
+  if (target) {
+    target._dissolvingOut = false;
+    clearHomeDissolve(target);
+    target.hidden = false;
+  }
   _pageBlurInit = true;
   showError("");
   if (page === "menu") {
@@ -3056,6 +3088,14 @@ function showHomeSubpage(page, skipBlur = false) {
     if ($("practice-name") && !$("practice-name").value.trim() && $("name") && $("name").value.trim()) {
       $("practice-name").value = $("name").value.trim();
     }
+  }
+
+  if (shouldCrossDissolve && target) {
+    target._dissolveAnim = target.animate([
+      { opacity: 0 },
+      { opacity: 1 },
+    ], { duration: 260, easing: "ease-out" });
+    target._dissolveTimer = setTimeout(() => { target._dissolveAnim = null; }, 280);
   }
 }
 if ($("home-multiplayer")) $("home-multiplayer").addEventListener("click", () => showHomeSubpage("multiplayer"));

@@ -189,6 +189,7 @@ def _view(room_code: str, entry: dict, name: str) -> dict:
             "game_in_progress": state is not None and state.phase != "over",
             "game_over": state is not None and state.phase == "over",
             "double_tap_play": bool(entry.get("double_tap_play", False)),
+            "public": bool(entry.get("public", False)),
             "chat": list(entry.get("chat", [])),
             "can_start": False,
         }
@@ -208,6 +209,7 @@ def _view(room_code: str, entry: dict, name: str) -> dict:
             "host": entry["host"],
             "you_are_host": entry["host"] == name,
             "double_tap_play": bool(entry.get("double_tap_play", False)),
+            "public": bool(entry.get("public", False)),
             "chat": list(entry.get("chat", [])),
             "can_start": entry["host"] == name and len(entry["players"]) >= MIN_PLAYERS,
         }
@@ -221,6 +223,7 @@ def _view(room_code: str, entry: dict, name: str) -> dict:
                  "player_colors": player_colors,
                  "bots": bots_in_room,
                  "you_are_host": entry["host"] == name,
+                 "public": bool(entry.get("public", False)),
                  "fast_bots": bool(entry.get("fast_bots", False)),
                  "max_players": MAX_PLAYERS,
                  "waiting_players": waiting_list,
