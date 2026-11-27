@@ -2997,13 +2997,51 @@ function triggerPageBlur(targetEl) {
     targetEl._blurInTimer = setTimeout(() => targetEl.classList.remove("page-blur-in"), 260);
   }
 }
+function crossDissolveHome(outgoingEl, incomingEl) {
+  if (reduceMotion) return;
+  if (outgoingEl && outgoingEl !== incomingEl && !outgoingEl.hidden) {
+    const r = outgoingEl.getBoundingClientRect();
+    if (r.width && r.height) {
+      const ghost = outgoingEl.cloneNode(true);
+      ghost.removeAttribute("id");
+      ghost.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+      ghost.setAttribute("aria-hidden", "true");
+      ghost.style.position = "fixed";
+      ghost.style.left = r.left + "px";
+      ghost.style.top = r.top + "px";
+      ghost.style.width = r.width + "px";
+      ghost.style.height = r.height + "px";
+      ghost.style.margin = "0";
+      ghost.style.pointerEvents = "none";
+      ghost.style.zIndex = "65";
+      document.body.append(ghost);
+      const a = ghost.animate([
+        { opacity: 1 },
+        { opacity: 0 },
+      ], { duration: 240, easing: "ease-out", fill: "forwards" });
+      a.onfinish = () => ghost.remove();
+      setTimeout(() => ghost.remove(), 280);
+    }
+  }
+  if (incomingEl) {
+    incomingEl.classList.remove("page-blur-in");
+    void incomingEl.offsetWidth;
+    incomingEl.classList.add("page-blur-in");
+    clearTimeout(incomingEl._blurInTimer);
+    incomingEl._blurInTimer = setTimeout(() => incomingEl.classList.remove("page-blur-in"), 280);
+  }
+}
 function showHomeSubpage(page, skipBlur = false) {
+  const pages = [$("home-menu"), $("multiplayer-view"), $("practice-view")];
+  const outgoing = pages.find((el) => el && !el.hidden) || null;
   const target = page === "multiplayer" ? $("multiplayer-view")
     : page === "practice" ? $("practice-view") : $("home-menu");
+  const shouldCrossDissolve = _pageBlurInit && !skipBlur && outgoing && outgoing !== target;
+  if (shouldCrossDissolve) crossDissolveHome(outgoing, null);
   if ($("home-menu")) $("home-menu").hidden = page !== "menu";
   if ($("multiplayer-view")) $("multiplayer-view").hidden = page !== "multiplayer";
   if ($("practice-view")) $("practice-view").hidden = page !== "practice";
-  if (_pageBlurInit && !skipBlur) triggerPageBlur(target);
+  if (shouldCrossDissolve) crossDissolveHome(null, target);
   _pageBlurInit = true;
   showError("");
   if (page === "menu") {
